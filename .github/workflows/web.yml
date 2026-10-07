@@ -26,6 +26,53 @@ jobs:
       - name: 构建网页(make web)
         run: make web
 
+      # 源 .webfonts/ 有字体时,从产物 HTML 提取实际用字,把全字库 woff2 原地子集化
+      # (同名覆盖,@font-face 无需改动);没有字体则跳过,不影响构建。
+      - name: 字体子集化(仅 .webfonts/ 有字体时)
+        run: |
+          if [ -z "$(find dist/webfonts -maxdepth 1 -name '*.woff2' 2>/dev/null)" ]; then
+            echo "dist/webfonts 下无字体,跳过子集化(见 .webfonts/README.md)"
+            exit 0
+          fi
+          if ! python3 -c "import fontTools, brotli" 2>/dev/null; then
+            python3 -m pip install --quiet --break-system-packages fonttools brotli \
+              || sudo apt-get install -y -qq python3-fonttools python3-brotli
+          fi
+          python3 - <<'PY'
+          import html, pathlib, subprocess, sys
+
+          dist = pathlib.Path("dist")
+          text = "\n".join(
+              p.read_text(encoding="utf-8") for p in sorted(dist.rglob("*.html"))
+          )
+          chars = set(text) | set(html.unescape(text))
+          chars |= {chr(c) for c in range(0x20, 0x7F)}
+          chars |= set("　、。，．·…—～－／｜（）〈〉《》「」『』【】“”‘’※→←↑↓")
+
+          tf = pathlib.Path("/tmp/uh-web-chars.txt")
+          tf.write_text("".join(sorted(chars)), encoding="utf-8")
+          print(f"用字提取:{len(chars)} 个字符")
+
+          before_all = after_all = 0
+          for f in sorted((dist / "webfonts").glob("*.woff2")):
+              before = f.stat().st_size
+              tmp = pathlib.Path(str(f) + ".subset")
+              subprocess.run([sys.executable, "-m", "fontTools.subset", str(f),
+                  f"--text-file={tf}",
+                  "--flavor=woff2",
+                  f"--output-file={tmp}",
+                  "--layout-features=*",
+                  "--no-hinting",
+                  "--drop-tables+=DSIG",
+              ], check=True)
+              tmp.replace(f)
+              after = f.stat().st_size
+              before_all += before
+              after_all += after
+              print(f"  {f.name}:{before // 1024}KB -> {after // 1024}KB")
+          print(f"字体合计:{before_all // 1024}KB -> {after_all // 1024}KB")
+          PY
+
       - name: 推送到 web 分支
         working-directory: dist
         run: |

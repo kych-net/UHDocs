@@ -37,6 +37,13 @@ web:  ## 网页:多页站点,收尾跑 脚本/web_post.sh(HTML 导出为实验�
 	  cp "$$f" "$$out"; \
 	done
 	@sh 脚本/web_post.sh dist
+	@if [ -n "$$(find .webfonts -maxdepth 1 -name '*.woff2' 2>/dev/null)" ]; then \
+	  mkdir -p dist/webfonts; \
+	  cp .webfonts/*.woff2 dist/webfonts/; \
+	  echo "FONT  .webfonts/*.woff2 -> dist/webfonts/"; \
+	else \
+	  echo "FONT  跳过:.webfonts/ 下无 .woff2(见 .webfonts/README.md)"; \
+	fi
 
 watch:  ## 监听改动,自动重编入口 PDF
 	typst watch --root . 内容/index.typ dist/index.pdf

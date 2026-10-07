@@ -22,6 +22,7 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
 | `脚本/web_post.sh` | 网页后处理:抽公共 CSS 到 `/assets/underhell.css`、把定义在别页的元素连成链接、注入目录/评论开合脚本 |
 | `附件/元素系统.csv` | 元素系统宽表(首列=元素 id,其后每列=一个系统) |
 | `图片/` | 图片素材,已配置 Git LFS |
+| `.webfonts/` | 自托管网页字体源目录(默认隐藏),默认只有说明文件;放入 4 个 `.woff2` 后 `make web` 会拷到产物 `dist/webfonts/`(见 `.webfonts/README.md`) |
 | `Makefile` | 编译脚本 |
 | `.github/workflows/web.yml` | 推送 `main` → 构建并强推 `web` 分支 |
 
@@ -140,6 +141,16 @@ typst compile --root . --input 元素系统=学术 内容/index.typ dist/index.p
 - clone 前需装 `git lfs`,否则拿到的是指针文件;新图放进 `图片/` 即自动走 LFS。
 - 引用图片用 `image("图片/xxx.png")`(路径相对当前 `.typ` 文件解析)。
 
+## 字体(`.webfonts/`)
+
+- 模板包 `languages/zh.toml` 的 `[web]` 段引用四个自托管 `.woff2`(正文/标题/粗体/评论),
+  **文件名固定**;包内不含字体,由项目提供。
+- 本项目默认不放字体(模板仓库不便用 Git LFS),`.webfonts/` 下只有说明;需要时按
+  `.webfonts/README.md` 放入四个文件。缺字体不影响构建,网页回退系统字体。
+- 源目录以 `.` 开头(默认隐藏),与对外路径**不同名**:`make web` 把 `.webfonts/*.woff2`
+  拷到 `dist/webfonts/`(产物目录名固定为 `webfonts`,对应 `/webfonts/…` URL,勿改);
+  `.github/workflows/web.yml` 在有字体时按页面实际用字子集化后再发布。
+
 ## 语法规范
 
 中文:以直陈、白描为基本写法。少用状语、补语和副词,只保留有实际信息的修饰。
@@ -156,9 +167,10 @@ summary structures and forced conclusions.
 
 ## 发布网页
 
-`make web` 的 `dist/` 是纯静态站点。推送 `main` 后 `.github/workflows/web.yml` 会重建并
-强推 `web` 分支;托管平台(Cloudflare Pages / EdgeOne Pages)绑定 `web` 分支并**关闭平台侧
-构建**即可。分平台步骤见根 `README.md`「部署网页」。
+`make web` 的 `dist/` 是纯静态站点(`.webfonts/` 有字体时,产物含 `webfonts/`)。推送 `main` 后
+`.github/workflows/web.yml` 会重建、按页面用字子集化字体,并强推 `web` 分支;托管平台
+(Cloudflare Pages / EdgeOne Pages)绑定 `web` 分支并**关闭平台侧构建**即可。分平台步骤见
+根 `README.md`「部署网页」。
 
 ## 已知坑
 
