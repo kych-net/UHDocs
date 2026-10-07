@@ -46,11 +46,11 @@ jobs:
           echo "模板版本:${VERSION}"
           sed -i "s|@preview/underhell:[0-9.]*|@preview/underhell:${VERSION}|" "$GITHUB_WORKSPACE/配置.typ"
 
-      - name: 构建网页(make web)
+      - name: 构建网页和PDF(make all)
         env:
           # 让 typst 从 .packages/ 取模板,而不是去下载 Universe 的包
           TYPST_PACKAGE_PATH: ${{ github.workspace }}/.packages
-        run: make web
+        run: make all
 
       # 源 .webfonts/ 有字体时,从产物 HTML 提取实际用字,把全字库 woff2 原地子集化
       # (同名覆盖,@font-face 无需改动);没有字体则跳过,不影响构建。
