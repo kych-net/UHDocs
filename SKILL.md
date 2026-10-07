@@ -40,7 +40,7 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
 ## 编译
 
 ```sh
-make pdf    # 内容/ 下全部 .typ → dist/*.pdf
+make pdf    # 内容/ 下全部 .typ → dist/*.pdf(逐页经 脚本/页面.typ 套模板)
 make web    # 多页站点 → dist/(含 /assets/underhell.css)
 make watch  # 监听 内容/index.typ,自动重编 dist/index.pdf
 make clean  # rm -rf dist
@@ -57,6 +57,10 @@ typst compile --root . --input 元素系统=学术 内容/index.typ dist/index.p
 网页是多页站点:入口 `内容/index.typ` → `dist/index.html`;其余 `内容/<路径>.typ` 经
 `脚本/页面.typ` 套模板 → `dist/<路径>/index.html`;目录页 `内容/<目录>/index.typ` →
 `dist/<目录>/index.html`。逐页导出后由 `sh 脚本/web_post.sh dist` 收尾。
+
+PDF 走同一套页面集合:入口 `内容/index.typ` 直接编译 → `dist/index.pdf`(整本,自带封面与目录);
+其余各页经 `脚本/页面.typ` 套模板 → `dist/<路径>.pdf`。章节是片段、不自己 `#show`,直接单独编译
+会没有模板样式,故必须经 `页面.typ`。
 
 ## 章节写法
 

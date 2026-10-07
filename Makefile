@@ -5,15 +5,26 @@
 #
 # 网页是多页站点:入口 → dist/index.html,每章 → dist/<路径>/index.html,
 # 收尾由 脚本/web_post.sh 抽一份公共样式表并把跨页元素连成链接。
+#
+# PDF 与网页共用同一套页面集合:入口 内容/index.typ → dist/index.pdf(整本),
+# 其余各页经 脚本/页面.typ 套用模板 → dist/<路径>.pdf。章节是"只管正文"的片段,
+# 不自己 #show,直接编译会没有模板样式,故必须走 页面.typ。
 
-.PHONY: pdf web watch clean
+.PHONY: pdf web watch clean all
 
-pdf:  ## 编译 内容/ 下全部 .typ 为 PDF
+pdf:  ## 编译 内容/ 下全部 .typ 为 PDF(逐页经 脚本/页面.typ 套用模板)
 	@set -e; for f in $$(find 内容 -name '*.typ' | sort); do \
-	  out="dist/$${f#内容/}"; out="$${out%.typ}.pdf"; \
+	  rel="$${f#内容/}"; \
+	  case "$$rel" in \
+	    index.typ)   out="dist/index.pdf"; src="$$f"; args="";; \
+	    */index.typ) p="$${rel%/index.typ}"; out="dist/$$p/index.pdf"; \
+	                 src="脚本/页面.typ"; args="--input 页=$$p --input 源=$$f";; \
+	    *)           p="$${rel%.typ}"; out="dist/$$p.pdf"; \
+	                 src="脚本/页面.typ"; args="--input 页=$$p --input 源=$$f";; \
+	  esac; \
 	  mkdir -p "$$(dirname "$$out")"; \
 	  echo "PDF  $$f -> $$out"; \
-	  typst compile --root . "$$f" "$$out"; \
+	  typst compile --root . $$args "$$src" "$$out"; \
 	done
 
 web:  ## 网页:多页站点,收尾跑 脚本/web_post.sh(HTML 导出为实验特性)
@@ -50,3 +61,7 @@ watch:  ## 监听改动,自动重编入口 PDF
 
 clean:  ## 清理产物
 	rm -rf dist
+
+all:
+	$(MAKE) pdf
+	$(MAKE) web
