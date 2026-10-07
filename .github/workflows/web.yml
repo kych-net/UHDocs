@@ -22,6 +22,9 @@ jobs:
 
       - name: 检出仓库
         uses: actions/checkout@v4
+        with:
+          # .webfonts/ 的字体走 LFS,不拉取只会拿到指针文件
+          lfs: true
 
       # 模板不再走 Typst Universe(那边只有 0.3.1),直接引 kych-net/UHTemp 的 main。
       # 模板一更新,下次构建就跟上;配置.typ 里的版本号由下一步改写对齐。
@@ -34,12 +37,14 @@ jobs:
 
       # 用模板自带的 scripts/package 把仓库装成 <workspace>/.packages/preview/underhell/<版本>,
       # 再把配置.typ 的 @preview/underhell 版本号改成 typst.toml 里的实际版本。
+      # 该脚本按 cwd 读 .typstignore、并按 cwd 遍历待打包文件,故必须在模板仓库根运行。
       - name: 装模板成本地包
+        working-directory: .uhtemp
         run: |
-          . .uhtemp/scripts/setup
-          bash .uhtemp/scripts/package "$GITHUB_WORKSPACE/.packages/preview"
+          . scripts/setup
+          bash scripts/package "$GITHUB_WORKSPACE/.packages/preview"
           echo "模板版本:${VERSION}"
-          sed -i "s|@preview/underhell:[0-9.]*|@preview/underhell:${VERSION}|" 配置.typ
+          sed -i "s|@preview/underhell:[0-9.]*|@preview/underhell:${VERSION}|" "$GITHUB_WORKSPACE/配置.typ"
 
       - name: 构建网页(make web)
         env:

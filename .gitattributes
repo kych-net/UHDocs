@@ -13,3 +13,6 @@
 图片/**/*.heif filter=lfs diff=lfs merge=lfs -text
 图片/**/*.ico filter=lfs diff=lfs merge=lfs -text
 图片/**/*.psd filter=lfs diff=lfs merge=lfs -text
+
+# .webfonts/ 下的自托管网页字体(大文件)使用 Git LFS 管理
+.webfonts/*.woff2 filter=lfs diff=lfs merge=lfs -text
