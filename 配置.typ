@@ -33,6 +33,16 @@
   元素系统数据: 元素数据,
 )
 
+// 网页右上角导航(模板的 页脚链接: 参数):PDF 一项指向本页同名 .pdf(如 /世界纲要.pdf),
+// 其余为仓库外链。传入本页 PDF 的站点路径——各独立页由 脚本/页面.typ 按自身路径算出,
+// 入口页 内容/index.typ 传 "/index.pdf"。
+// / Site nav (页脚链接:): the PDF entry points at this page's own .pdf.
+#let 站点链接(本页PDF) = (
+  (标签: "PDF", 网址: 本页PDF, 提示: "下载本页 PDF"),
+  (标签: "GitHub", 网址: "https://github.com/kych-net/UnderHell", 提示: "GitHub 仓库"),
+  (标签: "GitCode", 网址: "https://gitcode.com/CrossDark/UnderHell", 提示: "GitCode 仓库"),
+)
+
 #let 导航 = (
   ("世界纲要", "世界纲要"),
   ("生物", "生物"),

@@ -12,6 +12,6 @@
 // 目录页(如 内容/生物/index.typ → 页=生物)由 make 显式传入
 #let 源 = sys.inputs.at("源", default: "内容/" + 页 + ".typ")
 
-#show: 网页模板.with(页标题: 标题)
+#show: 网页模板.with(页标题: 标题, 页脚链接: 站点链接("/" + 页 + ".pdf"))
 
 #include "../" + 源
