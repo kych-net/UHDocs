@@ -21,14 +21,14 @@ make watch  # 监听入口，自动重编
 
 ## 创建项目后清单
 
-- [ ] 检查最新版本[地狱之下](https://typst.app/universe/package/underhell),我有可能忘了更新
-- [ ] 修改 `配置.typ` 中的标题、副标题、作者、品牌名等项目信息
-- [ ] 按需要增删 `内容/` 下章节，并在 `内容/index.typ` 调整 `#include`
-- [ ] 替换 `附件/元素系统.csv` 为你的项目素材
-- [ ] 在仓库 Settings → Actions 中确认允许工作流运行
+- [X] 检查最新版本[地狱之下](https://typst.app/universe/package/underhell),我有可能忘了更新
+- [X] 修改 `配置.typ` 中的标题、副标题、作者、品牌名等项目信息
+- [X] 按需要增删 `内容/` 下章节，并在 `内容/index.typ` 调整 `#include`
+- [X] 替换 `附件/元素系统.csv` 为你的项目素材
+- [X] 在仓库 Settings → Actions 中确认允许工作流运行
 - [ ] 推送到 `main` 触发 `.github/workflows/web.yml`，确认 `web` 分支产物更新
 - [ ] 在托管平台绑定 `web` 分支并关闭平台侧构建
-- [ ] 把 `LICENSE` 中版权改成你的名字
+- [X] 把 `LICENSE` 中版权改成你的名字
 
 ## 元素系统
 
