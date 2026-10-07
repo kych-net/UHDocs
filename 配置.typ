@@ -3,7 +3,7 @@
 // / Site config: re-exports the template and defines the web template.
 // Chapters only write #import "../配置.typ": * — the template is re-exported here.
 
-#import "@preview/underhell:0.6.1": *
+#import "@preview/underhell:1.0.0": *
 
 // 重定义 导入:模板包里的同名函数用 include "/" + 路径,但包内文件的 "/" 以*包根*
 // 为基准(Typst 沙箱),会去包缓存里找本项目文件而报错。改在项目内定义,"/" 即以

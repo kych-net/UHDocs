@@ -23,7 +23,28 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v4
 
+      # 模板不再走 Typst Universe(那边只有 0.3.1),直接引 kych-net/UHTemp 的 main。
+      # 模板一更新,下次构建就跟上;配置.typ 里的版本号由下一步改写对齐。
+      - name: 检出模板(kych-net/UHTemp main)
+        uses: actions/checkout@v4
+        with:
+          repository: kych-net/UHTemp
+          ref: main
+          path: .uhtemp
+
+      # 用模板自带的 scripts/package 把仓库装成 <workspace>/.packages/preview/underhell/<版本>,
+      # 再把配置.typ 的 @preview/underhell 版本号改成 typst.toml 里的实际版本。
+      - name: 装模板成本地包
+        run: |
+          . .uhtemp/scripts/setup
+          bash .uhtemp/scripts/package "$GITHUB_WORKSPACE/.packages/preview"
+          echo "模板版本:${VERSION}"
+          sed -i "s|@preview/underhell:[0-9.]*|@preview/underhell:${VERSION}|" 配置.typ
+
       - name: 构建网页(make web)
+        env:
+          # 让 typst 从 .packages/ 取模板,而不是去下载 Universe 的包
+          TYPST_PACKAGE_PATH: ${{ github.workspace }}/.packages
         run: make web
 
       # 源 .webfonts/ 有字体时,从产物 HTML 提取实际用字,把全字库 woff2 原地子集化
