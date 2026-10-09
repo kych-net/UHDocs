@@ -185,12 +185,12 @@ ax.set_xlim(0, 660)
 ax.set_ylim(0, 50)
 ax.set_xlabel("速度 (m/s)")
 ax.set_ylabel("高度 (km)")
-ax.set_title("怪动植物飞行包线（赤道 300 K，航程）")
+ax.set_title("怪动植物飞行参数")
 ax.grid(True, alpha=0.25)
 ax.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
 
 fig.tight_layout()
-fig.savefig("图片/飞行.png")
+fig.savefig("图片/飞行.png", transparent=True)
 print("已写入 图片/飞行.png")
 
 # ---------- 复核输出 ----------
