@@ -149,7 +149,13 @@
 
 == 飞行参数
 
-#image("../../图片/飞行.png")
+#align(center)[*赤道*]
+
+#image("../../图片/飞行-赤道.png", width: 100%)
+
+#align(center)[*极点*]
+
+#image("../../图片/飞行-极点.png", width: 100%)
 
 == 负重
 
