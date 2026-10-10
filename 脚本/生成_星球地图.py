@@ -17,9 +17,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_SVG = os.path.join(ROOT, "图片", "星球地图草稿.svg")
 OUT_PNG = "/tmp/星球地图_预览.png"
 
-SEED = 634734342231276         # 随机种子(固定)
+SEED = 6347447676         # 随机种子(固定)
 NX, NY = 480, 240        # 经度 × 纬度 网格
-TARGET_OCEAN = 0.85      # 目标海洋面积占比
+TARGET_OCEAN = 0.80      # 目标海洋面积占比
 
 # 多尺度权重:压低最大尺度(避免单一超级大陆),抬高中小尺度(大陆 + 群岛)
 SCALES = (1, 2, 4, 8, 16, 32)
