@@ -1,6 +1,6 @@
 // cetz 绘图模块:集中定义全部绘图数据、配色、图例与绘图函数
 // 内容文件 #import 本模块后直接调用绘图函数,不再各自 import cetz
-#import "@preview/cetz:0.4.0": canvas
+#import "@preview/cetz:0.4.0": canvas, draw
 #import "@preview/cetz-plot:0.1.2": plot, chart
 
 
@@ -201,3 +201,222 @@
   let s = calc.sin(φ * 1deg)
   赤道参数.海平面温 - (赤道参数.海平面温 - 极点参数.海平面温) * s * s
 }
+
+
+// ========== 怪眼 · 感光光谱 ==========
+// 物理模型与峰位设计见 脚本/设计_怪眼光谱.py(数值复核脚本);曲线由 cetz-plot 直接绘制,不再生成外链 SVG。
+// 定量输出:终端表见该脚本(恒星黑体归一化、大气透过率、视色素 FWHM、红外热噪声)。
+
+#let 光谱常数 = (
+  H: 6.62607015e-34, C: 2.99792458e8, K: 1.380649e-23,
+  恒星温: 5772.0,   // 按 1360 W/m² 取 G2V
+  缩放: 6.788e-5,    // 黑体辐亮度式 ∫b_λdλ = 2.003e7 W/m²,归一到 1360 W/m²
+  雷利: 0.231,       // Rayleigh 缩放(He 主导,空气更透;地球空气为 1)
+  臭氧数: 8.06e18,   // molecules/cm²(300 DU)
+)
+
+// 恒星黑体谱(辐亮度式) → 大气外辐照度 W/m²/nm
+#let 黑体谱(λ) = {
+  let l = λ * 1e-9
+  let hc = 光谱常数.H * 光谱常数.C
+  2 * hc * 光谱常数.C / (calc.pow(l, 5) * (calc.exp(hc / (l * 光谱常数.K * 光谱常数.恒星温)) - 1))
+}
+#let 恒星谱(λ) = 黑体谱(λ) * 光谱常数.缩放 * 1e-9
+
+// 大气透过率(赤道海平面,天顶):Rayleigh + 臭氧(Hartley/Huggins 陡沿)+ 气体吸收带
+#let 雷利τ(λ) = {
+  let u = λ / 1000.0
+  光谱常数.雷利 * 0.008569 * calc.pow(u, -4) * (1 + 0.0113 * calc.pow(u, -2) + 0.00013 * calc.pow(u, -4))
+}
+
+#let 臭氧截面表 = (
+  (250, 1.15e-17), (260, 8.0e-18), (270, 3.8e-18), (280, 1.1e-18), (285, 4.0e-19),
+  (290, 3.0e-19), (295, 5.0e-19), (300, 2.0e-19), (305, 6.0e-20), (310, 1.6e-20),
+  (315, 5.0e-21), (320, 1.5e-21), (330, 5.0e-23), (350, 5.0e-23),
+  (400, 1.0e-22), (450, 1.5e-21), (500, 3.0e-21), (550, 4.5e-21), (600, 5.2e-21),
+  (650, 3.5e-21), (700, 1.2e-21), (750, 3.0e-22), (800, 1.0e-22),
+)
+#let 臭氧截面(λ) = {
+  let t = 臭氧截面表
+  if λ <= t.first().at(0) { return t.first().at(1) }
+  if λ >= t.last().at(0) { return t.last().at(1) }
+  let r = 0.0
+  for i in range(t.len() - 1) {
+    let (l1, v1) = t.at(i)
+    let (l2, v2) = t.at(i + 1)
+    if l1 <= λ and λ <= l2 {
+      let w = (λ - l1) / (l2 - l1)
+      r = calc.exp((1 - w) * calc.ln(v1) + w * calc.ln(v2))   // 对数插值,保陡沿
+    }
+  }
+  r
+}
+#let 臭氧τ(λ) = 臭氧截面(λ) * 光谱常数.臭氧数
+
+#let 吸收带表 = (
+  ("H2O", 720, 0.12, 25), ("H2O", 820, 0.35, 35), ("H2O", 940, 1.60, 70), ("H2O", 1130, 2.00, 90),
+  ("O2", 628, 0.30, 3), ("O2", 687, 1.20, 4), ("O2", 761, 3.50, 4), ("O2", 1064, 1.50, 12),
+  ("NH3", 552, 0.10, 5), ("NH3", 650, 0.12, 6), ("NH3", 790, 0.90, 10), ("NH3", 1050, 2.20, 35),
+)
+#let 吸收带τ(λ) = 吸收带表.fold(0.0, (acc, b) => {
+  let s = b.at(3) / 2.3548
+  acc + b.at(2) * calc.exp(-0.5 * calc.pow((λ - b.at(1)) / s, 2))
+})
+#let 透过率(λ) = calc.exp(-(雷利τ(λ) + 臭氧τ(λ) + 吸收带τ(λ)))
+#let 地表谱(λ) = 恒星谱(λ) * 透过率(λ)
+
+// 视色素吸收模板:α 带(波数对数空间高斯)+ β 带肩(Govardovskii 2000 参数)
+#let 视色素(λ, λmax, 宽度: 0.115, 带: true) = {
+  let a = calc.exp(-calc.pow(calc.ln(λ / λmax) / 宽度, 2))
+  if 带 {
+    let lb = 189.6 + 0.315 * λmax
+    let db = calc.abs(-20.5 + 0.041 * λmax)
+    a + 0.26 * calc.exp(-calc.pow((λ - lb) / db, 2))
+  } else { a }
+}
+
+// 峰位(λmax, nm):普通视网膜四色;辅助眼六色;松果体 24 色(等波数 320–980);松果旁体三基底
+#let 峰普通 = (375, 460, 525, 600)
+#let 峰辅助 = (360, 445, 520, 585, 675, 860)
+#let 峰松果 = (320, 330, 340, 351, 362, 375, 388, 402, 418, 435, 452, 472,
+  493, 517, 542, 571, 602, 637, 677, 721, 772, 831, 899, 980)
+#let 峰基底 = (450, 700, 950)
+
+// 波长 → sRGB(Tanner Helland 近似;UV / 红外外推为紫 / 暗红)
+#let 波长色(λ) = {
+  let c = if λ < 350 { (0.42 - (350 - λ) / 350 * 0.4, 0.0, 0.62) }
+    else if λ < 440 { (-(λ - 440) / (440 - 350), 0.0, 1.0) }
+    else if λ < 490 { (0.0, (λ - 440) / (490 - 440), 1.0) }
+    else if λ < 510 { (0.0, 1.0, -(λ - 510) / (510 - 490)) }
+    else if λ < 580 { ((λ - 510) / (580 - 510), 1.0, 0.0) }
+    else if λ < 645 { (1.0, -(λ - 645) / (645 - 580), 0.0) }
+    else if λ <= 780 { (1.0, 0.0, 0.0) }
+    else { let f = calc.max(0.0, 1.0 - (λ - 780) / 300); (0.55 * f, 0.0, 0.0) }
+  let (r, g, b) = if 350 <= λ and λ < 420 {
+    let f = 0.3 + 0.7 * (λ - 350) / 70
+    (c.at(0) * f, c.at(1) * f, c.at(2) * f)
+  } else if 700 < λ and λ <= 780 {
+    let f = 0.3 + 0.7 * (780 - λ) / 80
+    (c.at(0) * f, c.at(1), c.at(2))
+  } else { c }
+  rgb(int(calc.round(calc.clamp(r, 0, 1) * 255)),
+      int(calc.round(calc.clamp(g, 0, 1) * 255)),
+      int(calc.round(calc.clamp(b, 0, 1) * 255)))
+}
+
+// 画布:统一 x 轴(250–1150 nm),y 归一化(彩带占底部负区间,故隐去 y 刻度);
+// 宽度随栏宽铺满,再交 适配栏宽 兜住标签外溢
+#let 光谱画布(体, 比: 0.55) = layout(尺寸 => {
+  let 宽 = 尺寸.width / 1cm
+  适配栏宽(canvas({
+    plot.plot(
+      体,
+      size: (宽, 宽 * 比),
+      axis-style: "scientific",
+      x-min: 250, x-max: 1150, x-tick-step: 200, x-label: [波长 (nm)], x-grid: true,
+      y-min: -0.12, y-max: 1.06, y-tick-step: none, y-label: none,
+    )
+  }))
+})
+
+// 底部光谱彩带
+#let 光谱彩带() = plot.annotate({
+  let 段 = 90
+  let 步 = (1150.0 - 250.0) / 段
+  for i in range(段) {
+    let lo = 250.0 + i * 步
+    draw.rect((lo, -0.085), (lo + 步, -0.005), fill: 波长色(lo + 步 / 2), stroke: none)
+  }
+}, resize: false)
+
+// 吸收带底纹
+#let 吸收带底纹(带) = plot.annotate({
+  for (lo, hi) in 带 {
+    draw.rect((lo, 0), (hi, 1.0), fill: black.transparentize(90%), stroke: none)
+  }
+}, resize: false, background: true)
+
+// 入射光谱与大气窗口
+#let 大气光谱图 = {
+  let 通量序列 = range(300, 1150, step: 2).map(λ => 恒星谱(λ))
+  let 峰 = calc.max(..通量序列)
+  光谱画布({
+    吸收带底纹(((250, 318), (684, 691), (756, 767), (898, 985)))
+    光谱彩带()
+    plot.annotate({
+      for (x, t) in ((284, [O₃]), (687, [O₂]), (761, [O₂]), (940, [H₂O])) {
+        draw.content((x, 1.02), text(size: 6.5pt, fill: rgb("#3a352d"), t))
+      }
+    }, resize: false)
+    plot.add(λ => 恒星谱(λ) / 峰, domain: (250, 1150), samples: 1100,
+      fill: true, fill-type: "axis",
+      style: (stroke: rgb("#6f6a60") + 1.3pt, fill: rgb("#6f6a60").transparentize(92%)))
+    plot.add(λ => 地表谱(λ) / 峰, domain: (250, 1150), samples: 1100,
+      style: (stroke: rgb("#C62828") + 1.6pt))
+    plot.add(透过率, domain: (250, 1150), samples: 1100,
+      style: (stroke: (paint: rgb("#1565C0"), thickness: 1.1pt, dash: "dashed")))
+  })
+}
+#let 大气光谱图例 = text(size: .85em)[
+  #text(fill: rgb("#6f6a60"))[━ 大气外]　#text(fill: rgb("#C62828"))[━ 地表]　#text(fill: rgb("#1565C0"))[┄ 透过率]
+]
+
+// 普通视网膜(四色,带 β 带)
+#let 普通视网膜图 = 光谱画布({
+  光谱彩带()
+  for p in 峰普通 {
+    let c = 波长色(p)
+    plot.add(λ => 视色素(λ, p) * 0.92, domain: (calc.max(250, p - 190), calc.min(1150, p + 270)), samples: 160,
+      fill: true, fill-type: "axis",
+      style: (stroke: c + 1.6pt, fill: c.transparentize(72%)))
+    plot.annotate(draw.content((p, 0.98), text(size: 6.5pt, fill: c, str(p))), resize: false)
+  }
+})
+
+// 松果体视网膜(24 色,窄带色素 σ=0.055,无 β 带)
+#let 松果体视网膜图 = 光谱画布({
+  吸收带底纹(((250, 318), (756, 767)))
+  光谱彩带()
+  for p in 峰松果 {
+    let c = 波长色(p)
+    plot.add(λ => 视色素(λ, p, 宽度: 0.055, 带: false) * 0.94,
+      domain: (calc.max(250, p * 0.62), calc.min(1150, p * 1.5)), samples: 60,
+      fill: true, fill-type: "axis",
+      style: (stroke: c + 1.0pt, fill: c.transparentize(66%)))
+  }
+  for i in (0, 6, 12, 18, 23) {
+    let p = 峰松果.at(i)
+    plot.annotate(draw.content((p, 1.0), text(size: 6pt, fill: 波长色(p), str(p))), resize: false)
+  }
+})
+
+// 松果旁体(分光光度细胞,三宽基底色素,扫描 300–1100)
+#let 松果旁体视网膜图 = 光谱画布({
+  吸收带底纹(((250, 300),))
+  光谱彩带()
+  let 基底色 = (rgb("#54A24B"), rgb("#F58518"), rgb("#E45756"))
+  for (i, p) in 峰基底.enumerate() {
+    let c = 基底色.at(i)
+    plot.add(λ => 视色素(λ, p) * 0.8, domain: (calc.max(250, p - 190), calc.min(1150, p + 270)), samples: 200,
+      fill: true, fill-type: "axis",
+      style: (stroke: c + 1.4pt, fill: c.transparentize(84%)))
+  }
+  plot.annotate({
+    draw.line((300, 0), (300, 1.0), stroke: (paint: rgb("#1565C0"), thickness: 1pt, dash: "dashed"))
+    draw.line((1100, 0), (1100, 1.0), stroke: (paint: rgb("#1565C0"), thickness: 1pt, dash: "dashed"))
+    draw.content((700, 0.5), text(size: 6.5pt, fill: rgb("#1565C0"), [扫描 300–1100,R≈300]))
+  }, resize: false)
+})
+
+// 辅助眼(六色)
+#let 辅助眼图 = 光谱画布({
+  吸收带底纹(((756, 767),))
+  光谱彩带()
+  for p in 峰辅助 {
+    let c = 波长色(p)
+    plot.add(λ => 视色素(λ, p) * 0.92, domain: (calc.max(250, p - 190), calc.min(1150, p + 270)), samples: 160,
+      fill: true, fill-type: "axis",
+      style: (stroke: c + 1.5pt, fill: c.transparentize(72%)))
+    plot.annotate(draw.content((p, 0.98), text(size: 6.5pt, fill: c, str(p))), resize: false)
+  }
+})
