@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300" font-family="Songti SC, STSong, serif">
+<style>.ts{fill:#1f1a14;font-size:10px}.th{fill:#14110d;font-size:13px;font-weight:bold}.ax{stroke:#4a443b;stroke-width:.8}.gd{stroke:#8f887c;stroke-width:.7}.band{fill:#000;opacity:.10}</style>
+<defs>
+<clipPath id="plot"><rect x="52" y="26" width="690" height="232"/></clipPath>
+<linearGradient id="spec" x1="0" y1="0" x2="1" y2="0"><stop offset="0.0000" stop-color="#4d009e"/><stop offset="0.0111" stop-color="#50009e"/><stop offset="0.0222" stop-color="#53009e"/><stop offset="0.0333" stop-color="#56009e"/><stop offset="0.0444" stop-color="#59009e"/><stop offset="0.0556" stop-color="#5c009e"/><stop offset="0.0667" stop-color="#5f009e"/><stop offset="0.0778" stop-color="#62009e"/><stop offset="0.0889" stop-color="#65009e"/><stop offset="0.1000" stop-color="#68009e"/><stop offset="0.1111" stop-color="#4c004c"/><stop offset="0.1222" stop-color="#5a0066"/><stop offset="0.1333" stop-color="#63007f"/><stop offset="0.1444" stop-color="#650099"/><stop offset="0.1556" stop-color="#6300b2"/><stop offset="0.1667" stop-color="#5a00cc"/><stop offset="0.1778" stop-color="#4c00e5"/><stop offset="0.1889" stop-color="#3800ff"/><stop offset="0.2000" stop-color="#1c00ff"/><stop offset="0.2111" stop-color="#0000ff"/><stop offset="0.2222" stop-color="#0033ff"/><stop offset="0.2333" stop-color="#0066ff"/><stop offset="0.2444" stop-color="#0099ff"/><stop offset="0.2556" stop-color="#00ccff"/><stop offset="0.2667" stop-color="#00ffff"/><stop offset="0.2778" stop-color="#00ff7f"/><stop offset="0.2889" stop-color="#00ff00"/><stop offset="0.3000" stop-color="#24ff00"/><stop offset="0.3111" stop-color="#48ff00"/><stop offset="0.3222" stop-color="#6dff00"/><stop offset="0.3333" stop-color="#91ff00"/><stop offset="0.3444" stop-color="#b6ff00"/><stop offset="0.3556" stop-color="#daff00"/><stop offset="0.3667" stop-color="#ffff00"/><stop offset="0.3778" stop-color="#ffd700"/><stop offset="0.3889" stop-color="#ffb000"/><stop offset="0.4000" stop-color="#ff8900"/><stop offset="0.4111" stop-color="#ff6200"/><stop offset="0.4222" stop-color="#ff3a00"/><stop offset="0.4333" stop-color="#ff1300"/><stop offset="0.4444" stop-color="#ff0000"/><stop offset="0.4556" stop-color="#ff0000"/><stop offset="0.4667" stop-color="#ff0000"/><stop offset="0.4778" stop-color="#ff0000"/><stop offset="0.4889" stop-color="#ff0000"/><stop offset="0.5000" stop-color="#ff0000"/><stop offset="0.5111" stop-color="#e80000"/><stop offset="0.5222" stop-color="#d20000"/><stop offset="0.5333" stop-color="#bc0000"/><stop offset="0.5444" stop-color="#a50000"/><stop offset="0.5556" stop-color="#8f0000"/><stop offset="0.5667" stop-color="#790000"/><stop offset="0.5778" stop-color="#620000"/><stop offset="0.5889" stop-color="#4c0000"/><stop offset="0.6000" stop-color="#870000"/><stop offset="0.6111" stop-color="#820000"/><stop offset="0.6222" stop-color="#7e0000"/><stop offset="0.6333" stop-color="#790000"/><stop offset="0.6444" stop-color="#740000"/><stop offset="0.6556" stop-color="#700000"/><stop offset="0.6667" stop-color="#6b0000"/><stop offset="0.6778" stop-color="#660000"/><stop offset="0.6889" stop-color="#620000"/><stop offset="0.7000" stop-color="#5d0000"/><stop offset="0.7111" stop-color="#580000"/><stop offset="0.7222" stop-color="#540000"/><stop offset="0.7333" stop-color="#4f0000"/><stop offset="0.7444" stop-color="#4a0000"/><stop offset="0.7556" stop-color="#460000"/><stop offset="0.7667" stop-color="#410000"/><stop offset="0.7778" stop-color="#3c0000"/><stop offset="0.7889" stop-color="#380000"/><stop offset="0.8000" stop-color="#330000"/><stop offset="0.8111" stop-color="#2e0000"/><stop offset="0.8222" stop-color="#2a0000"/><stop offset="0.8333" stop-color="#250000"/><stop offset="0.8444" stop-color="#200000"/><stop offset="0.8556" stop-color="#1c0000"/><stop offset="0.8667" stop-color="#170000"/><stop offset="0.8778" stop-color="#120000"/><stop offset="0.8889" stop-color="#0e0000"/><stop offset="0.9000" stop-color="#090000"/><stop offset="0.9111" stop-color="#040000"/><stop offset="0.9222" stop-color="#000000"/><stop offset="0.9333" stop-color="#000000"/><stop offset="0.9444" stop-color="#000000"/><stop offset="0.9556" stop-color="#000000"/><stop offset="0.9667" stop-color="#000000"/><stop offset="0.9778" stop-color="#000000"/><stop offset="0.9889" stop-color="#000000"/><stop offset="1.0000" stop-color="#000000"/></linearGradient>
+<path id="pfn" d="M -0.600 0 L -0.600,0.000 -0.592,0.000 -0.584,0.000 -0.576,0.000 -0.568,0.000 -0.560,0.000 -0.552,0.000 -0.544,0.000 -0.536,0.000 -0.528,0.000 -0.520,0.000 -0.512,0.000 -0.504,0.000 -0.496,0.000 -0.488,0.000 -0.480,0.000 -0.472,0.000 -0.464,0.000 -0.456,0.000 -0.448,0.000 -0.440,0.000 -0.432,0.000 -0.424,0.000 -0.416,0.000 -0.408,0.000 -0.400,0.000 -0.392,0.000 -0.384,0.000 -0.376,0.000 -0.368,0.000 -0.360,0.000 -0.352,0.000 -0.344,0.000 -0.336,0.000 -0.328,0.000 -0.320,0.000 -0.312,0.000 -0.304,0.000 -0.296,0.000 -0.288,0.000 -0.280,0.000 -0.272,0.000 -0.264,0.000 -0.256,0.000 -0.248,0.000 -0.240,0.000 -0.232,0.000 -0.224,0.000 -0.216,0.000 -0.208,0.000 -0.200,0.000 -0.192,0.000 -0.184,0.000 -0.176,0.000 -0.168,0.000 -0.160,0.000 -0.152,0.000 -0.144,0.000 -0.136,0.001 -0.128,0.002 -0.120,0.005 -0.112,0.009 -0.104,0.019 -0.096,0.034 -0.088,0.061 -0.080,0.100 -0.072,0.158 -0.064,0.235 -0.056,0.334 -0.048,0.449 -0.040,0.576 -0.032,0.705 -0.024,0.823 -0.016,0.918 -0.008,0.979 0.000,1.000 0.008,0.979 0.016,0.920 0.024,0.830 0.032,0.720 0.040,0.601 0.048,0.484 0.056,0.375 0.064,0.280 0.072,0.202 0.080,0.141 0.088,0.095 0.096,0.062 0.104,0.039 0.112,0.024 0.120,0.014 0.128,0.008 0.136,0.005 0.144,0.003 0.152,0.001 0.160,0.001 0.168,0.000 0.176,0.000 0.184,0.000 0.192,0.000 0.200,0.000 0.208,0.000 0.216,0.000 0.224,0.000 0.232,0.000 0.240,0.000 0.248,0.000 0.256,0.000 0.264,0.000 0.272,0.000 0.280,0.000 0.288,0.000 0.296,0.000 0.304,0.000 0.312,0.000 0.320,0.000 0.328,0.000 0.336,0.000 0.344,0.000 0.352,0.000 0.360,0.000 0.368,0.000 0.376,0.000 0.384,0.000 0.392,0.000 0.400,0.000 0.408,0.000 0.416,0.000 0.424,0.000 0.432,0.000 0.440,0.000 0.448,0.000 0.456,0.000 0.464,0.000 0.472,0.000 0.480,0.000 0.488,0.000 0.496,0.000 0.504,0.000 0.512,0.000 0.520,0.000 0.528,0.000 0.536,0.000 0.544,0.000 0.552,0.000 0.560,0.000 0.568,0.000 0.576,0.000 0.584,0.000 0.592,0.000 0.600,0.000 0.608,0.000 0.616,0.000 0.624,0.000 L 0.624 0 Z"/>
+<path id="pln" d="M -0.600 0.000 -0.592 0.000 -0.584 0.000 -0.576 0.000 -0.568 0.000 -0.560 0.000 -0.552 0.000 -0.544 0.000 -0.536 0.000 -0.528 0.000 -0.520 0.000 -0.512 0.000 -0.504 0.000 -0.496 0.000 -0.488 0.000 -0.480 0.000 -0.472 0.000 -0.464 0.000 -0.456 0.000 -0.448 0.000 -0.440 0.000 -0.432 0.000 -0.424 0.000 -0.416 0.000 -0.408 0.000 -0.400 0.000 -0.392 0.000 -0.384 0.000 -0.376 0.000 -0.368 0.000 -0.360 0.000 -0.352 0.000 -0.344 0.000 -0.336 0.000 -0.328 0.000 -0.320 0.000 -0.312 0.000 -0.304 0.000 -0.296 0.000 -0.288 0.000 -0.280 0.000 -0.272 0.000 -0.264 0.000 -0.256 0.000 -0.248 0.000 -0.240 0.000 -0.232 0.000 -0.224 0.000 -0.216 0.000 -0.208 0.000 -0.200 0.000 -0.192 0.000 -0.184 0.000 -0.176 0.000 -0.168 0.000 -0.160 0.000 -0.152 0.000 -0.144 0.000 -0.136 0.001 -0.128 0.002 -0.120 0.005 -0.112 0.009 -0.104 0.019 -0.096 0.034 -0.088 0.061 -0.080 0.100 -0.072 0.158 -0.064 0.235 -0.056 0.334 -0.048 0.449 -0.040 0.576 -0.032 0.705 -0.024 0.823 -0.016 0.918 -0.008 0.979 0.000 1.000 0.008 0.979 0.016 0.920 0.024 0.830 0.032 0.720 0.040 0.601 0.048 0.484 0.056 0.375 0.064 0.280 0.072 0.202 0.080 0.141 0.088 0.095 0.096 0.062 0.104 0.039 0.112 0.024 0.120 0.014 0.128 0.008 0.136 0.005 0.144 0.003 0.152 0.001 0.160 0.001 0.168 0.000 0.176 0.000 0.184 0.000 0.192 0.000 0.200 0.000 0.208 0.000 0.216 0.000 0.224 0.000 0.232 0.000 0.240 0.000 0.248 0.000 0.256 0.000 0.264 0.000 0.272 0.000 0.280 0.000 0.288 0.000 0.296 0.000 0.304 0.000 0.312 0.000 0.320 0.000 0.328 0.000 0.336 0.000 0.344 0.000 0.352 0.000 0.360 0.000 0.368 0.000 0.376 0.000 0.384 0.000 0.392 0.000 0.400 0.000 0.408 0.000 0.416 0.000 0.424 0.000 0.432 0.000 0.440 0.000 0.448 0.000 0.456 0.000 0.464 0.000 0.472 0.000 0.480 0.000 0.488 0.000 0.496 0.000 0.504 0.000 0.512 0.000 0.520 0.000 0.528 0.000 0.536 0.000 0.544 0.000 0.552 0.000 0.560 0.000 0.568 0.000 0.576 0.000 0.584 0.000 0.592 0.000 0.600 0.000 0.608 0.000 0.616 0.000 0.624 0.000"/>
+</defs>
+<text x="52" y="18" class="th">松果体视网膜 · 24 色</text>
+<rect x="52.0" y="30" width="52.1" height="224" class="band"/>
+<rect x="439.9" y="30" width="8.4" height="224" class="band"/>
+<line x1="52.0" y1="30" x2="52.0" y2="254" class="gd"/>
+<line x1="90.3" y1="30" x2="90.3" y2="254" class="gd"/>
+<line x1="128.7" y1="30" x2="128.7" y2="254" class="gd"/>
+<line x1="167.0" y1="30" x2="167.0" y2="254" class="gd"/>
+<line x1="205.3" y1="30" x2="205.3" y2="254" class="gd"/>
+<line x1="243.7" y1="30" x2="243.7" y2="254" class="gd"/>
+<line x1="282.0" y1="30" x2="282.0" y2="254" class="gd"/>
+<line x1="320.3" y1="30" x2="320.3" y2="254" class="gd"/>
+<line x1="358.7" y1="30" x2="358.7" y2="254" class="gd"/>
+<line x1="397.0" y1="30" x2="397.0" y2="254" class="gd"/>
+<line x1="435.3" y1="30" x2="435.3" y2="254" class="gd"/>
+<line x1="473.7" y1="30" x2="473.7" y2="254" class="gd"/>
+<line x1="512.0" y1="30" x2="512.0" y2="254" class="gd"/>
+<line x1="550.3" y1="30" x2="550.3" y2="254" class="gd"/>
+<line x1="588.7" y1="30" x2="588.7" y2="254" class="gd"/>
+<line x1="627.0" y1="30" x2="627.0" y2="254" class="gd"/>
+<line x1="665.3" y1="30" x2="665.3" y2="254" class="gd"/>
+<line x1="703.7" y1="30" x2="703.7" y2="254" class="gd"/>
+<line x1="742.0" y1="30" x2="742.0" y2="254" class="gd"/>
+<line x1="52" y1="254" x2="742" y2="254" class="ax"/>
+<line x1="90.3" y1="254" x2="90.3" y2="258" class="ax"/>
+<text x="90.3" y="270" class="ts" text-anchor="middle">300</text>
+<line x1="167.0" y1="254" x2="167.0" y2="258" class="ax"/>
+<text x="167.0" y="270" class="ts" text-anchor="middle">400</text>
+<line x1="243.7" y1="254" x2="243.7" y2="258" class="ax"/>
+<text x="243.7" y="270" class="ts" text-anchor="middle">500</text>
+<line x1="320.3" y1="254" x2="320.3" y2="258" class="ax"/>
+<text x="320.3" y="270" class="ts" text-anchor="middle">600</text>
+<line x1="397.0" y1="254" x2="397.0" y2="258" class="ax"/>
+<text x="397.0" y="270" class="ts" text-anchor="middle">700</text>
+<line x1="473.7" y1="254" x2="473.7" y2="258" class="ax"/>
+<text x="473.7" y="270" class="ts" text-anchor="middle">800</text>
+<line x1="550.3" y1="254" x2="550.3" y2="258" class="ax"/>
+<text x="550.3" y="270" class="ts" text-anchor="middle">900</text>
+<line x1="627.0" y1="254" x2="627.0" y2="258" class="ax"/>
+<text x="627.0" y="270" class="ts" text-anchor="middle">1000</text>
+<line x1="703.7" y1="254" x2="703.7" y2="258" class="ax"/>
+<text x="703.7" y="270" class="ts" text-anchor="middle">1100</text>
+<rect x="52" y="276" width="690" height="7" fill="url(#spec)" stroke="#8a8177" stroke-width=".5"/>
+<text x="397" y="294" class="ts" text-anchor="middle">波长 (nm)</text>
+<g>
+<use href="#pfn" transform="translate(105.7,254) scale(245.33,-206.1)" fill="#62009e" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(105.7,254) scale(245.33,-206.1)" fill="none" stroke="#62009e" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(113.3,254) scale(253.00,-206.1)" fill="#65009e" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(113.3,254) scale(253.00,-206.1)" fill="none" stroke="#65009e" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(121.0,254) scale(260.67,-206.1)" fill="#68009e" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(121.0,254) scale(260.67,-206.1)" fill="none" stroke="#68009e" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(129.4,254) scale(269.10,-206.1)" fill="#4e004f" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(129.4,254) scale(269.10,-206.1)" fill="none" stroke="#4e004f" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(137.9,254) scale(277.53,-206.1)" fill="#5c006b" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(137.9,254) scale(277.53,-206.1)" fill="none" stroke="#5c006b" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(147.8,254) scale(287.50,-206.1)" fill="#65008c" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(147.8,254) scale(287.50,-206.1)" fill="none" stroke="#65008c" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(157.8,254) scale(297.47,-206.1)" fill="#6400ad" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(157.8,254) scale(297.47,-206.1)" fill="none" stroke="#6400ad" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(168.5,254) scale(308.20,-206.1)" fill="#5800d1" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(168.5,254) scale(308.20,-206.1)" fill="none" stroke="#5800d1" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(180.8,254) scale(320.47,-206.1)" fill="#3d00f9" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(180.8,254) scale(320.47,-206.1)" fill="none" stroke="#3d00f9" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(193.8,254) scale(333.50,-206.1)" fill="#0e00ff" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(193.8,254) scale(333.50,-206.1)" fill="none" stroke="#0e00ff" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(206.9,254) scale(346.53,-206.1)" fill="#003dff" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(206.9,254) scale(346.53,-206.1)" fill="none" stroke="#003dff" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(222.2,254) scale(361.87,-206.1)" fill="#00a3ff" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(222.2,254) scale(361.87,-206.1)" fill="none" stroke="#00a3ff" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(238.3,254) scale(377.97,-206.1)" fill="#00ffd8" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(238.3,254) scale(377.97,-206.1)" fill="none" stroke="#00ffd8" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(256.7,254) scale(396.37,-206.1)" fill="#19ff00" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(256.7,254) scale(396.37,-206.1)" fill="none" stroke="#19ff00" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(275.9,254) scale(415.53,-206.1)" fill="#74ff00" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(275.9,254) scale(415.53,-206.1)" fill="none" stroke="#74ff00" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(298.1,254) scale(437.77,-206.1)" fill="#deff00" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(298.1,254) scale(437.77,-206.1)" fill="none" stroke="#deff00" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(321.9,254) scale(461.53,-206.1)" fill="#ffa800" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(321.9,254) scale(461.53,-206.1)" fill="none" stroke="#ffa800" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(348.7,254) scale(488.37,-206.1)" fill="#ff1f00" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(348.7,254) scale(488.37,-206.1)" fill="none" stroke="#ff1f00" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(379.4,254) scale(519.03,-206.1)" fill="#ff0000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(379.4,254) scale(519.03,-206.1)" fill="none" stroke="#ff0000" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(413.1,254) scale(552.77,-206.1)" fill="#d00000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(413.1,254) scale(552.77,-206.1)" fill="none" stroke="#d00000" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(452.2,254) scale(591.87,-206.1)" fill="#5e0000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(452.2,254) scale(591.87,-206.1)" fill="none" stroke="#5e0000" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(497.4,254) scale(637.10,-206.1)" fill="#740000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(497.4,254) scale(637.10,-206.1)" fill="none" stroke="#740000" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(549.6,254) scale(689.23,-206.1)" fill="#540000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(549.6,254) scale(689.23,-206.1)" fill="none" stroke="#540000" stroke-width="1.1"/>
+<use href="#pfn" transform="translate(611.7,254) scale(751.33,-206.1)" fill="#2e0000" fill-opacity="0.32"/>
+<use href="#pln" transform="translate(611.7,254) scale(751.33,-206.1)" fill="none" stroke="#2e0000" stroke-width="1.1"/>
+</g>
+<text x="105.7" y="42" class="ts" text-anchor="middle" fill="#62009e">320</text>
+<text x="157.8" y="42" class="ts" text-anchor="middle" fill="#6400ad">388</text>
+<text x="379.4" y="42" class="ts" text-anchor="middle" fill="#ff0000">677</text>
+<text x="238.3" y="42" class="ts" text-anchor="middle" fill="#00ffd8">493</text>
+<text x="611.7" y="42" class="ts" text-anchor="middle" fill="#2e0000">980</text>
+</svg>

@@ -274,21 +274,32 @@ def wl_color(lam):
 def esc(s):
     return html.escape(str(s))
 
-STYLE = ('<style>.ts{fill:#5b5347;font-size:10px}'
-         '.th{fill:#2b2620;font-size:13px;font-weight:bold}'
-         '.ax{stroke:#8a8177;stroke-width:.8}.gd{stroke:#c8c2b6;stroke-width:.7}'
-         '.band{fill:#9aa0a6;opacity:.14}</style>')
+STYLE = ('<style>.ts{fill:#1f1a14;font-size:10px}'
+         '.th{fill:#14110d;font-size:13px;font-weight:bold}'
+         '.ax{stroke:#4a443b;stroke-width:.8}.gd{stroke:#8f887c;stroke-width:.7}'
+         '.band{fill:#000;opacity:.10}</style>')
 
 def svg_head(title):
-    return [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{HGT}" '
-        f'viewBox="0 0 {W} {HGT}" font-family="Songti SC, STSong, serif">',
-        STYLE,
-        f'<text x="{PX0}" y="18" class="th">{esc(title)}</text>',
-    ]
+    return {
+        "body": [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{HGT}" '
+            f'viewBox="0 0 {W} {HGT}" font-family="Songti SC, STSong, serif">',
+            STYLE,
+            f'<text x="{PX0}" y="18" class="th">{esc(title)}</text>',
+        ],
+        "defs": [
+            '<defs>',
+            f'<clipPath id="plot"><rect x="{PX0}" y="{PY0-4}" width="{PW}" '
+            f'height="{PH+8}"/></clipPath>',
+            f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="0">'
+            + "".join(f'<stop offset="{(l-WL0)/(WL1-WL0):.4f}" stop-color="{wl_color(l)}"/>'
+                      for l in range(WL0, WL1 + 1, 10))
+            + '</linearGradient>',
+        ],
+    }
 
-def x_axis(out, ticks=range(300, 1151, 100), ribbon=True, bands=()):
-    a = out.append
+def x_axis(doc, ticks=range(300, 1151, 100), ribbon=True, bands=()):
+    a = doc["body"].append
     for lo, hi in bands:
         a(f'<rect x="{sx(lo):.1f}" y="{PY0}" width="{sx(hi)-sx(lo):.1f}" '
           f'height="{PH}" class="band"/>')
@@ -302,128 +313,185 @@ def x_axis(out, ticks=range(300, 1151, 100), ribbon=True, bands=()):
         a(f'<text x="{x:.1f}" y="{PY1+16}" class="ts" text-anchor="middle">{lam}</text>')
     if ribbon:
         ry = PY1 + 22
-        for i in range(WL0, WL1, 2):
-            a(f'<rect x="{sx(i):.1f}" y="{ry}" width="{sx(i+2)-sx(i)+.6:.2f}" '
-              f'height="7" fill="{wl_color(i)}"/>')
-        a(f'<rect x="{PX0}" y="{ry}" width="{PW}" height="7" fill="none" '
+        a(f'<rect x="{PX0}" y="{ry}" width="{PW}" height="7" fill="url(#spec)" '
           f'stroke="#8a8177" stroke-width=".5"/>')
     a(f'<text x="{(PX0+PX1)/2:.0f}" y="{HGT-6}" class="ts" text-anchor="middle">'
       f'波长 (nm)</text>')
 
-def write_svg(out, path):
+def write_svg(doc, path):
+    out = doc["body"][:2] + doc["defs"] + ["</defs>"] + doc["body"][2:]
     out.append('</svg>')
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(out))
 
-def polyline(out, pts, color, **kw):
-    extra = " ".join(f'{k.replace("_","-")}="{v}"' for k, v in kw.items())
-    out.append('<polyline points="' + " ".join(
-        f"{x:.1f},{y:.1f}" for x, y in pts)
-        + f'" fill="none" stroke="{color}" {extra}/>')
+# ---- 曲线抽稀(RDP)与 Catmull-Rom 三次贝塞尔平滑 ----
+def rdp(pts, eps):
+    if len(pts) < 3:
+        return pts
+    (x1, y1), (x2, y2) = pts[0], pts[-1]
+    dx, dy = x2 - x1, y2 - y1
+    d0 = dx * dx + dy * dy
+    im, dm = 0, 0.0
+    for i, (x, y) in enumerate(pts[1:-1], 1):
+        d = (abs(dy * x - dx * y + x2 * y1 - y2 * x1) / math.sqrt(d0)) if d0 else 0.0
+        if d > dm:
+            im, dm = i, d
+    if dm > eps:
+        return rdp(pts[:im + 1], eps)[:-1] + rdp(pts[im:], eps)
+    return [pts[0], pts[-1]]
+
+def smooth_d(pts):
+    """M + Catmull-Rom→三次贝塞尔, 坐标取整"""
+    p = [(round(x), round(y)) for x, y in pts]
+    d = [f"M {p[0][0]} {p[0][1]}"]
+    n = len(p)
+    for i in range(n - 1):
+        p0 = p[max(0, i - 1)]; p1 = p[i]; p2 = p[i + 1]; p3 = p[min(n - 1, i + 2)]
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        d.append(f"C {c1[0]:.0f} {c1[1]:.0f} {c2[0]:.0f} {c2[1]:.0f} {p2[0]} {p2[1]}")
+    return " ".join(d)
+
+def curve_paths(pts, fill_d=None):
+    """返回 (描边 d, 填充闭合 d);填充仅在给 fill_d 前缀点时生成"""
+    line = smooth_d(pts)
+    closed = (line + f" L {round(pts[-1][0])} {PY1} L {round(pts[0][0])} {PY1} Z")
+    return line, closed
 
 # ---------- 图1 入射光谱与大气窗口 ----------
 def fig1(path):
-    o = svg_head("入射光谱与大气窗口（赤道海平面，天顶）")
-    a = o.append
-    x_axis(o, bands=((250, 318), (684, 691), (756, 767), (898, 985)))
+    doc = svg_head("入射光谱与大气窗口（赤道海平面，天顶）")
+    o = doc["body"].append
+    x_axis(doc, bands=((250, 318), (684, 691), (756, 767), (898, 985)))
     fmax = max(f_am0(l) for l in range(300, 1150, 2))
-    p0, p1, pt = [], [], []
-    for i in range(WL0, WL1 + 1, 2):
-        p0.append((sx(i), sy(f_am0(i), fmax)))
-        p1.append((sx(i), sy(f_surf(i), fmax)))
-        pt.append((sx(i), PY1 - trans(i) * PH))
-    a(f'<polygon points="{PX0},{PY1} ' + " ".join(f"{x:.1f},{y:.1f}" for x, y in p0)
-      + f' {PX1},{PY1}" fill="#9a9384" fill-opacity=".08" stroke="none"/>')
-    polyline(o, p0, "#9a9384", stroke_width=1.3)
-    polyline(o, p1, "#C62828", stroke_width=1.6)
-    polyline(o, pt, "#1565C0", stroke_width=1.1, stroke_dasharray="4 3", opacity=.9)
-    a(f'<text x="{PX1}" y="{PY0+12}" class="ts" text-anchor="end">'
-      f'<tspan fill="#9a9384">━ 大气外</tspan>　'
+    def dense(f):
+        return [(sx(i), sy(f(i), fmax)) for i in range(WL0, WL1 + 1, 2)]
+    p0 = rdp(dense(f_am0), 0.8)
+    p1 = rdp(dense(f_surf), 0.35)
+    pt = rdp([(sx(i), PY1 - trans(i) * PH) for i in range(WL0, WL1 + 1, 2)], 0.35)
+    o('<g clip-path="url(#plot)">')
+    o(f'<path d="{smooth_d(p0)} L {PX1} {PY1} L {PX0} {PY1} Z" '
+      f'fill="#6f6a60" fill-opacity=".08" stroke="none"/>')
+    o(f'<path d="{smooth_d(p0)}" fill="none" stroke="#6f6a60" stroke-width="1.3"/>')
+    o(f'<path d="{smooth_d(p1)}" fill="none" stroke="#C62828" stroke-width="1.6"/>')
+    o(f'<path d="{smooth_d(pt)}" fill="none" stroke="#1565C0" stroke-width="1.1" '
+      f'stroke-dasharray="4 3" opacity=".9"/>')
+    o('</g>')
+    o(f'<text x="{PX1}" y="{PY0+12}" class="ts" text-anchor="end">'
+      f'<tspan fill="#6f6a60">━ 大气外</tspan>　'
       f'<tspan fill="#C62828">━ 地表</tspan>　'
       f'<tspan fill="#1565C0">┄ 透过率</tspan></text>')
-    for x, t, c in ((sx(284), "O₃", "#777"), (sx(687), "O₂", "#777"),
-                    (sx(761), "O₂", "#777"), (sx(940), "H₂O", "#777")):
-        a(f'<text x="{x:.1f}" y="{PY0+26}" class="ts" text-anchor="middle" '
-          f'fill="{c}">{t}</text>')
-    write_svg(o, path)
+    for x, t in ((sx(284), "O₃"), (sx(687), "O₂"), (sx(761), "O₂"), (sx(940), "H₂O")):
+        o(f'<text x="{x:.1f}" y="{PY0+26}" class="ts" text-anchor="middle" '
+          f'fill="#3a352d">{t}</text>')
+    write_svg(doc, path)
 
 # ---------- 色素峰 ----------
-def draw_peaks(o, peaks, lw, alpha, labels, hfrac=.92, width=.115, beta=True):
-    """width: α 带 ln(λ/λmax) 高斯 σ; .115≈普通视色素(FWHM .19λ),
-    .055≈松果体窄带色素(FWHM .09λ)。beta: 是否画短波 β 带肩。"""
+SX_NM = PW / (WL1 - WL0)     # px / nm
+
+def shared_pigment_defs(doc, key, width):
+    """无 β 带色素在 u=(λ-λmax)/λmax 坐标下形状与 λmax 无关,
+    24 个峰只存一条归一化路径,用 transform 复用。"""
+    us = [-.60 + i * .008 for i in range(154)]
+    def r(u):
+        return math.exp(-(math.log(1 + u) / width) ** 2)
+    top = " ".join(f"{u:.3f},{r(u):.3f}" for u in us)
+    doc["defs"].append(f'<path id="pf{key}" d="M {us[0]:.3f} 0 L {top} '
+                       f'L {us[-1]:.3f} 0 Z"/>')
+    doc["defs"].append(f'<path id="pl{key}" d="M {top.replace(",", " ")}"/>')
+
+def draw_peaks_shared(doc, peaks, key, lw, alpha, labels, hfrac=.92):
+    o = doc["body"].append
     hi = PH * hfrac
-    for i, lmax in enumerate(peaks):
+    o('<g clip-path="url(#plot)">')
+    for lmax in peaks:
+        tr = (f"translate({sx(lmax):.1f},{PY1}) scale({SX_NM*lmax:.2f},{-hi:.1f})")
+        c = wl_color(lmax)
+        o(f'<use href="#pf{key}" transform="{tr}" fill="{c}" fill-opacity="{alpha}"/>')
+        o(f'<use href="#pl{key}" transform="{tr}" fill="none" stroke="{c}" '
+          f'stroke-width="{lw}"/>')
+    o('</g>')
+    for lmax in labels:
+        o(f'<text x="{sx(lmax):.1f}" y="{PY0+12}" class="ts" text-anchor="middle" '
+          f'fill="{wl_color(lmax)}">{lmax}</text>')
+
+def draw_peaks(doc, peaks, lw, alpha, labels, hfrac=.92, width=.115):
+    """带 β 带的普通视色素:每峰形状不同,密集采样后 RDP 抽稀为贝塞尔。"""
+    o = doc["body"].append
+    hi = PH * hfrac
+    o('<g clip-path="url(#plot)">')
+    for lmax in peaks:
         lo, hi_l = max(250, lmax - 180), min(1150, lmax + 260)
         def resp(v):
-            s = math.exp(-(math.log(v / lmax) / width) ** 2)
-            if beta:
-                s += _gov_beta(v, lmax)
-            return s
+            return math.exp(-(math.log(v / lmax) / width) ** 2) + _gov_beta(v, lmax)
         nmax = max(resp(v) for v in range(lo, hi_l))
-        pts = [(sx(v), PY1 - resp(v) / nmax * hi) for v in range(lo, hi_l, 2)]
+        dense = [(sx(v), PY1 - resp(v) / nmax * hi) for v in range(lo, hi_l, 2)]
+        pts = rdp(dense, 0.4)
+        line, closed = curve_paths(pts)
         c = wl_color(lmax)
-        o.append(f'<polygon points="{sx(lo):.1f},{PY1} '
-                 + " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-                 + f' {sx(hi_l):.1f},{PY1}" fill="{c}" opacity="{alpha}"/>')
-        polyline(o, pts, c, stroke_width=lw)
-        if lmax in labels:
-            o.append(f'<text x="{sx(lmax):.1f}" y="{PY0+12}" class="ts" '
-                     f'text-anchor="middle" fill="{c}">{lmax}</text>')
+        o(f'<path d="{closed}" fill="{c}" fill-opacity="{alpha}" stroke="none"/>')
+        o(f'<path d="{line}" fill="none" stroke="{c}" stroke-width="{lw}"/>')
+    o('</g>')
+    for lmax in labels:
+        o(f'<text x="{sx(lmax):.1f}" y="{PY0+12}" class="ts" text-anchor="middle" '
+          f'fill="{wl_color(lmax)}">{lmax}</text>')
 
 # ---------- 图2 普通视网膜 ----------
 def fig2(path):
-    o = svg_head("普通视网膜 · 四色")
-    x_axis(o)
-    draw_peaks(o, 普通, 2.0, .32, set(普通))
-    write_svg(o, path)
+    doc = svg_head("普通视网膜 · 四色")
+    x_axis(doc)
+    draw_peaks(doc, 普通, 2.0, .32, set(普通))
+    write_svg(doc, path)
 
-# ---------- 图3 松果体视网膜(窄带色素) ----------
+# ---------- 图3 松果体视网膜(窄带色素, 24 峰共享路径) ----------
 def fig3(path):
-    o = svg_head("松果体视网膜 · 24 色")
-    x_axis(o, bands=((250, 318), (756, 767)))
-    draw_peaks(o, 松果, 1.1, .32,
-               {松果[0], 松果[6], 松果[12], 松果[18], 松果[-1]},
-               width=.055, beta=False)
-    write_svg(o, path)
+    doc = svg_head("松果体视网膜 · 24 色")
+    x_axis(doc, bands=((250, 318), (756, 767)))
+    shared_pigment_defs(doc, "n", .055)
+    draw_peaks_shared(doc, 松果, "n", 1.1, .32,
+                      {松果[0], 松果[6], 松果[12], 松果[18], 松果[-1]})
+    write_svg(doc, path)
 
 # ---------- 图4 松果旁体(分光光度细胞) ----------
 def fig4(path):
-    o = svg_head("松果旁体 · 分光光度细胞")
-    a = o.append
-    x_axis(o, bands=((250, 300),))
+    doc = svg_head("松果旁体 · 分光光度细胞")
+    o = doc["body"].append
+    x_axis(doc, bands=((250, 300),))
     colors = ("#54A24B", "#F58518", "#E45756")
     hi = PH * .8
+    o('<g clip-path="url(#plot)">')
     for lmax, c in zip(基底, colors):
         lo, hi_l = max(250, lmax - 180), min(1150, lmax + 260)
-        pts = [(sx(v), PY1 - pigment(v, lmax) * hi) for v in range(lo, hi_l, 2)]
-        a(f'<polygon points="{sx(lo):.1f},{PY1} '
-          + " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-          + f' {sx(hi_l):.1f},{PY1}" fill="{c}" opacity=".16"/>')
-        polyline(o, pts, c, stroke_width=1.4)
-    # 扫描区间
-    a(f'<line x1="{sx(300):.1f}" y1="{PY0+6}" x2="{sx(300):.1f}" y2="{PY1}" '
+        dense = [(sx(v), PY1 - pigment(v, lmax) * hi) for v in range(lo, hi_l, 2)]
+        pts = rdp(dense, 0.4)
+        line, closed = curve_paths(pts)
+        o(f'<path d="{closed}" fill="{c}" fill-opacity=".16" stroke="none"/>')
+        o(f'<path d="{line}" fill="none" stroke="{c}" stroke-width="1.4"/>')
+    o('</g>')
+    o(f'<line x1="{sx(300):.1f}" y1="{PY0+6}" x2="{sx(300):.1f}" y2="{PY1}" '
       f'stroke="#1565C0" stroke-width="1" stroke-dasharray="3 3"/>')
-    a(f'<line x1="{sx(1100):.1f}" y1="{PY0+6}" x2="{sx(1100):.1f}" y2="{PY1}" '
+    o(f'<line x1="{sx(1100):.1f}" y1="{PY0+6}" x2="{sx(1100):.1f}" y2="{PY1}" '
       f'stroke="#1565C0" stroke-width="1" stroke-dasharray="3 3"/>')
-    a(f'<text x="{sx(700):.1f}" y="{PY0+12}" class="ts" text-anchor="middle" '
+    o(f'<text x="{sx(700):.1f}" y="{PY0+12}" class="ts" text-anchor="middle" '
       f'fill="#1565C0">扫描 300–1100，R≈300</text>')
-    write_svg(o, path)
+    write_svg(doc, path)
 
 # 辅助眼单图(6 色)
 def fig5(path):
-    o = svg_head("辅助眼 · 六色")
-    x_axis(o, bands=((756, 767),))
-    draw_peaks(o, 辅助, 1.6, .28, set(辅助))
-    write_svg(o, path)
+    doc = svg_head("辅助眼 · 六色")
+    x_axis(doc, bands=((756, 767),))
+    draw_peaks(doc, 辅助, 1.6, .28, set(辅助))
+    write_svg(doc, path)
+
 
 
 if __name__ == "__main__":
     figs = [
-        (fig1, "图片/怪眼-1-大气窗口.svg"),
-        (fig2, "图片/怪眼-2-普通视网膜.svg"),
-        (fig3, "图片/怪眼-3-松果体视网膜.svg"),
-        (fig4, "图片/怪眼-4-松果旁体.svg"),
-        (fig5, "图片/怪眼-5-辅助眼.svg"),
+        (fig1, "图片/大气光谱.svg"),
+        (fig2, "图片/普通视网膜.svg"),
+        (fig3, "图片/松果体视网膜.svg"),
+        (fig4, "图片/松果旁体.svg"),
+        (fig5, "图片/辅助眼.svg"),
     ]
     for fn, p in figs:
         fn(p)
