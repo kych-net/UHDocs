@@ -1,136 +1,118 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-天堂(生物卫星)天体参数设计 —— 数值复核
+天堂(生物卫星)天体参数设计 —— 数值复核  [已按用户决策固化]
 只读,不改 内容/。运行: python3 脚本/设计_天堂天体.py
 
-已知(内容/地理/主行星.typ):
-  · 主行星半径 R_p ≈ 1.5e4 km, 表面重力 g_p ≈ 20 m/s²
-  · 恒星辐照度 ≈ 1360 W/m²(与地球太阳常数同) → 按太阳(G2V)取 a_p ≈ 1 AU
-  · 主行星自转 24 h, 轴倾角 23.44°
+用户决策:
+  1) 大小档 A(小卫星, 冥卫/月球量级)
+  2) 视直径 θ = 0.50°(待确认, 下方 DEFAULT_THETA 可改)
+  3) 潮汐锁定: 不一定, 取决于变轨方式
+  4) 改轨机制: 允许生物推进 / 质量流(非保守)
+  5) 恒星: 按类太阳 G2V(待确认)
 
-设定(内容/index.typ): 天堂是主行星的"生物卫星", 可改变自身轨道进而改变主行星轨道。
-
-本脚本把天堂的"自由度"参数化, 其余量由天体力学导出:
-  自由: 半径 r_s, 密度 ρ_s, 天上视直径 θ
-  导出: 质量 m_s, 轨道半长轴 a_s, 周期 T, 表面重力 g_s, 逃逸速度 v_esc,
-        轨道速度 v_o, 洛希极限, 希尔球占比, 质心偏移(改变主行星轨道的杠杆)
+已知(内容/地理/主行星.typ): R_p≈1.5e4 km, g_p≈20 m/s², 辐照度≈1360 W/m²
+设定(内容/index.typ): 天堂可改变自身轨道 → 改变主行星轨道 → 影响气候
 """
 
 import math
 
 # ========== 常数 ==========
-G = 6.67430e-11          # m³/(kg·s²)
-AU = 1.495978707e11      # m
-L_SUN = 3.828e26         # W
-M_SUN = 1.9885e30        # kg
+G = 6.67430e-11
+AU = 1.495978707e11
+L_SUN = 3.828e26
+M_SUN = 1.9885e30
 
 # ========== 主行星 ==========
-R_P = 1.5e4 * 1e3        # m  半径(设定)
-g_P = 20.0               # m/s² 表面重力(设定)
-M_P = g_P * R_P**2 / G   # 由 g=gM/R² 反推质量
+R_P = 1.5e4 * 1e3
+g_P = 20.0
+M_P = g_P * R_P**2 / G
 RHO_P = M_P / (4/3 * math.pi * R_P**3)
 MU_P = G * M_P
 V_ESC_P = math.sqrt(2 * g_P * R_P)
 
-# 恒星(按 1360 W/m² 取太阳量级)
-A_P = math.sqrt(L_SUN / (4 * math.pi * 1360.0))     # 行星-恒星距离
-T_P = 2 * math.pi * math.sqrt(A_P**3 / (G * M_SUN)) # 行星公转周期
-R_HILL = A_P * (M_P / (3 * M_SUN))**(1/3)           # 主行星希尔球半径
+A_P = math.sqrt(L_SUN / (4 * math.pi * 1360.0))
+T_P = 2 * math.pi * math.sqrt(A_P**3 / (G * M_SUN))
+V_P = math.sqrt(G * M_SUN / A_P)          # 主行星公转速度
+R_HILL = A_P * (M_P / (3 * M_SUN))**(1/3)
 
 print("=" * 78)
-print("零、主行星(由设定反推)与恒星参考系")
+print("零、参考系: 主行星(由设定反推) + 恒星")
 print("=" * 78)
-print(f"主行星半径 R_p      = {R_P/1e3:.0f} km        (设定 1.5e4)")
-print(f"表面重力 g_p        = {g_P:.1f} m/s²       (设定 20)")
-print(f"→ 质量 M_p          = {M_P:.4e} kg   = {M_P/5.9722e24:.2f} M_地")
-print(f"→ 平均密度 ρ_p      = {RHO_P:.0f} kg/m³    (地球 5514)")
-print(f"→ 引力常数 μ_p=GM_p = {MU_P:.4e} m³/s²")
-print(f"→ 逃逸速度 v_esc    = {V_ESC_P/1e3:.1f} km/s")
-print(f"恒星(太阳量级)距离 a_p = {A_P/AU:.4f} AU  (辐照度 1360 W/m²)")
-print(f"公转周期 T_p        = {T_P/86400:.1f} d")
-print(f"主行星希尔球 r_Hill = {R_HILL/1e3:.3e} km = {R_HILL/R_P:.0f} R_p")
+print(f"R_p={R_P/1e3:.0f} km  g_p={g_P:.1f} m/s²  →  M_p={M_P:.4e} kg ({M_P/5.9722e24:.2f} M_地)")
+print(f"ρ_p={RHO_P:.0f} kg/m³  μ_p={MU_P:.4e} m³/s²  v_esc={V_ESC_P/1e3:.1f} km/s")
+print(f"恒星(类太阳) a_p={A_P/AU:.4f} AU  T_p={T_P/86400:.1f} d  v_p={V_P/1e3:.2f} km/s")
+print(f"希尔球 r_Hill={R_HILL/1e3:.3e} km = {R_HILL/R_P:.0f} R_p")
 print()
 
-# ========== 天堂: 参数化 ==========
-def rho_from(r_km, m_earth_ratio=None, rho=None):
-    pass
+# ========== 天堂: 定案 A 档 ==========
+R_S = 1000 * 1e3            # m
+RHO_S = 2600.0             # kg/m³ 生物/岩石
+DEFAULT_THETA = 0.50       # °  待确认
 
-def scenario(name, r_km, rho_s, theta_deg):
-    """给定半径、密度、天上视直径, 导出全部轨道/表面量"""
-    r_s = r_km * 1e3
-    m_s = 4/3 * math.pi * r_s**3 * rho_s
-    mu_tot = G * (M_P + m_s)
-    # 视直径 θ = 2 r_s / a_s
-    theta = math.radians(theta_deg)
-    a_s = 2 * r_s / theta
-    T_s = 2 * math.pi * math.sqrt(a_s**3 / mu_tot)
-    v_o = math.sqrt(mu_tot / a_s)
-    g_s = G * m_s / r_s**2
-    v_esc_s = math.sqrt(2 * g_s * r_s)
-    # 洛希极限(刚体) d = R_p (2 ρ_p/ρ_s)^(1/3); 流体 ×2.44
-    d_roche = R_P * (2 * RHO_P / rho_s)**(1/3)
-    # 质心偏移(改变主行星轨道的位置杠杆): 卫星动 Δa 时行星反向动 q·Δa
-    q = m_s / (M_P + m_s)
-    return dict(
-        name=name, r_km=r_km, rho_s=rho_s, theta_deg=theta_deg,
-        r_s=r_s, m_s=m_s, q=q, a_s=a_s, T_s=T_s, v_o=v_o,
-        g_s=g_s, v_esc_s=v_esc_s, d_roche=d_roche,
-        a_over_Rp=a_s / R_P, hill_frac=a_s / R_HILL,
-        roche_margin=a_s / d_roche,
-    )
-
-def show(s):
-    print("-" * 78)
-    print(f"【{s['name']}】 r_s={s['r_km']:.0f} km, ρ_s={s['rho_s']:.0f} kg/m³, 视直径={s['theta_deg']:.2f}°")
-    print(f"  质量 m_s        = {s['m_s']:.4e} kg  = {s['m_s']/5.9722e24:.4f} M_地,  m_s/M_p = {s['q']:.4f}")
-    print(f"  轨道半长轴 a_s  = {s['a_s']/1e3:.4e} km = {s['a_over_Rp']:.1f} R_p")
-    print(f"  轨道周期 T_s    = {s['T_s']/86400:.2f} d")
-    print(f"  轨道速度 v_o    = {s['v_o']:.0f} m/s")
-    print(f"  表面重力 g_s    = {s['g_s']:.3f} m/s²  ({s['g_s']/9.81:.2f} g_地)")
-    print(f"  逃逸速度 v_esc  = {s['v_esc_s']:.0f} m/s")
-    print(f"  希尔球占比      = {s['hill_frac']*100:.1f}% r_Hill  (须远小于 0.5)")
-    print(f"  洛希极限(刚体)  = {s['d_roche']/1e3:.0f} km,  a_s/洛希 = {s['roche_margin']:.1f}× (须 >1)")
-    print(f"  质心偏移杠杆 q  = {s['q']:.4f}  → 天堂外移 Δa 时主行星反向移 {s['q']:.4f}·Δa")
+M_S = 4/3 * math.pi * R_S**3 * RHO_S
+Q = M_S / (M_P + M_S)
+MU_TOT = G * (M_P + M_S)
+THETA = math.radians(DEFAULT_THETA)
+A_S = 2 * R_S / THETA
+T_S = 2 * math.pi * math.sqrt(A_S**3 / MU_TOT)
+V_O = math.sqrt(MU_TOT / A_S)
+G_S = G * M_S / R_S**2
+V_ESC_S = math.sqrt(2 * G_S * R_S)
+D_ROCHE = R_P * (2 * RHO_P / RHO_S)**(1/3)
 
 print("=" * 78)
-print("一、候选方案(视直径统一取 0.50°, 与地球看月亮相当)")
+print(f"一、天堂定案参数 (A 档, 视直径 {DEFAULT_THETA}°)")
 print("=" * 78)
-schemes = [
-    scenario("A 小卫星(冥卫/月球量级)", 1000, 2600, 0.50),
-    scenario("B 中卫星(火星量级)", 2500, 3000, 0.50),
-    scenario("C 大卫星(近双行星)", 4000, 3200, 0.50),
-]
-for s in schemes:
-    show(s)
+print(f"半径 r_s        = {R_S/1e3:.0f} km")
+print(f"密度 ρ_s        = {RHO_S:.0f} kg/m³")
+print(f"质量 m_s        = {M_S:.4e} kg = {M_S/5.9722e24:.4f} M_地    m_s/M_p = {Q:.3e}")
+print(f"轨道半长轴 a_s  = {A_S/1e3:.4e} km = {A_S/R_P:.1f} R_p")
+print(f"轨道周期 T_s    = {T_S/86400:.2f} d")
+print(f"轨道速度 v_o    = {V_O:.0f} m/s")
+print(f"表面重力 g_s    = {G_S:.3f} m/s² ({G_S/9.81:.2f} g_地)")
+print(f"逃逸速度 v_esc  = {V_ESC_S:.0f} m/s")
+print(f"洛希极限(刚体)  = {D_ROCHE/1e3:.0f} km,  a_s/洛希 = {A_S/D_ROCHE:.1f}× (>1 稳定)")
+print(f"希尔球占比      = {A_S/R_HILL*100:.1f}% r_Hill")
+print(f"视半径(主行星看)= {DEFAULT_THETA/2:.2f}°")
 print()
 
+# ========== 二、变轨机制与自转 ==========
 print("=" * 78)
-print("二、放大到显著影响主行星轨道的杠杆(方案B 为基准)")
+print("二、变轨机制(决策 4)与自转(决策 3)")
 print("=" * 78)
-base = schemes[1]
-for mult in (1, 10, 100):
-    dm = mult * 1e3 * 1e3  # 天堂沿轨道外移 Δa = mult × 1e3 km
-    ds = base['q'] * dm
-    print(f"  天堂外移 Δa={dm/1e3:>6.0f} km → 主行星反向位移 {ds/1e3:8.1f} km "
-          f"= {ds/base['r_s']:.2f} 天堂半径, {ds/R_P:.3f} R_p")
-print("  说明: 行星相对日地距离的绝对位移不改平均辐照, 只改变'摆动',")
-print("        要真正改轨道需非保守的角动量/质量流(生物推进喷流), 属机制设定。")
+print("机制: 天堂喷射工质, 推力 F=m_dot·u 经引力耦合改变整个系统的日心动量。")
+print(f"冲量预算: 使系统质心 Δv 需 I=(M_p+m_s)·Δv = {M_P+M_S:.3e}·Δv")
+print(f"喷出工质 Δm=I/u; 以天堂质量 m_s={M_S:.3e} kg 为分母。")
+print()
+print(f"{'Δv(m/s)':>9} {'Δa/a':>9} {'Δa/AU':>10} "
+      f"{'Δm/m_s @u=3km/s':>17} {'Δm/m_s @u=30km/s':>18}")
+for dv in (0.01, 0.1, 1.0, 10.0, 100.0):
+    I = (M_P + M_S) * dv
+    da_a = 2 * dv / V_P                       # vis-viva: Δa/a ≈ 2Δv/v
+    f3 = I / (3000.0 * M_S)
+    f30 = I / (30000.0 * M_S)
+    print(f"{dv:9.3g} {da_a:9.2e} {da_a*A_P/AU:10.2e} {f3:17.3g} {f30:18.3g}")
+print("  (>1 表示所需工质已超过天堂自身质量)")
+
+print()
+print("辐照∝a⁻², 故改辐照 x% 只需 Δa/a=x%/2:")
+for pct in (0.1, 1.0, 5.0):
+    da_a = pct / 100.0 / 2
+    dv = V_P * da_a / 2
+    I = (M_P + M_S) * dv
+    print(f"  改辐照 {pct:>4}% → Δa/a={da_a:.3g}, Δv={dv:.1f} m/s, "
+          f"I={I:.1e} N·s, 工质@{3000} m/s={I/3000.0/M_S:.3g}×m_s")
+
+print()
+print("自转(决策3): 若喷射推力偏心, 反作用力矩使天堂自转可主动控制,")
+print("  故不服从自然潮汐锁定; 自转周期由变轨操作决定, 不被 T_s 约束。")
 print()
 
+# ========== 三、待确认项 ==========
 print("=" * 78)
-print("三、同步自转(潮汐锁定)一致性")
+print("三、仍待确认")
 print("=" * 78)
-for s in schemes:
-    print(f"  {s['name']}: 若潮汐锁定, 天堂自转周期 = 轨道周期 = {s['T_s']/86400:.2f} d, "
-          f"同一面恒朝主行星。")
-print()
-
-print("=" * 78)
-print("四、结论(待用户拍板的自由度)")
-print("=" * 78)
-print("  · 半径 r_s        : 决定质量与表面重力;  A/B/C 三档相差一个量级")
-print("  · 密度 ρ_s        : 生物卫星多为岩石/有机, 取 2600–3200 kg/m³")
-print("  · 天上视直径 θ    : 定轨道半径与周期; 0.5°≈月亮, 更大则更近更慢")
-print("  · 是否潮汐锁定    : 影响自转与'同一面朝主行星'")
-print("  · 改轨机制        : 物理摆动量很小, 显著改轨需设定层面的质量流/推进")
+print(f"  · 视直径 θ(现取 {DEFAULT_THETA}°, 与地球看月同) → 决定 a_s 与 T_s")
+print("  · 恒星是否类太阳 G2V(现按此取 a_p=1 AU, T_p=365 d)")
+print("  · 变轨的时间尺度与代价是否要在设定中软化(纯物理下改轨极难)")
