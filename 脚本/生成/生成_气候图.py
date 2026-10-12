@@ -24,6 +24,7 @@ from scipy.sparse.linalg import lsqr
 from scipy.ndimage import distance_transform_edt, gaussian_filter, label
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
+import matplotlib.patheffects as pe
 
 plt.rcParams["font.family"] = ["Arial Unicode MS", "PingFang SC", "Heiti TC", "LXGW WenKai"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -45,11 +46,45 @@ T_赤道, T_极点 = 300.0, 240.0      # K 海平面纬向年均温
 雨带_φ = [0, 10, 20, 28, 35, 45, 55, 70, 90]
 雨带_P = [2200, 1500, 900, 350, 450, 850, 650, 300, 100]
 
-# 气候分类(细化 Köppen)：0 海洋,1 冰原,2 苔原,3 沙漠,4 草原,5 寒温带,
-# 6 温带,7 热带雨林,8 热带季风,9 热带草原
-气候名 = ["海洋", "冰原", "苔原", "沙漠", "草原", "寒温带", "温带", "热带雨林", "热带季风", "热带草原"]
-气候色 = ["#EDF2F6", "#CFE0F0", "#B9D6C6", "#E4D6A0", "#C4D88C",
-        "#63A184", "#3FA24A", "#0E5A24", "#4FA030", "#9BC24A"]
+# 完整 Köppen 气候类型(0 = 海洋;其余按此顺序编号)
+# 配色按气候族分色系:A 绿 / B 橙黄 / C 蓝青 / D 紫 / E 灰白,族内再用明度区分
+类别 = [
+    ("Af", "热带雨林", "#12762A"),
+    ("Am", "热带季风", "#3E9E33"),
+    ("Aw", "热带草原", "#8DC63F"),
+    ("As", "热带夏干", "#B6CE4A"),
+    ("BWh", "热沙漠", "#E07B33"),
+    ("BWk", "冷沙漠", "#C7915A"),
+    ("BSh", "热草原", "#EFC63A"),
+    ("BSk", "冷草原", "#D8C68A"),
+    ("Cfa", "亚热带湿润热夏", "#2F7DC8"),
+    ("Cfb", "温带海洋暖夏", "#5DA6DC"),
+    ("Cfc", "温带海洋冷夏", "#9BCBEA"),
+    ("Cwa", "亚热带季风热夏", "#159E9E"),
+    ("Cwb", "亚热带季风暖夏", "#45BEB0"),
+    ("Cwc", "亚热带季风冷夏", "#86D2C6"),
+    ("Csa", "地中海热夏", "#B0629B"),
+    ("Csb", "地中海暖夏", "#C68CB4"),
+    ("Csc", "地中海冷夏", "#D8B4CE"),
+    ("Dfa", "大陆湿润热夏", "#6A4C99"),
+    ("Dfb", "大陆湿润暖夏", "#8A6BB6"),
+    ("Dfc", "大陆湿润冷夏", "#AB90D2"),
+    ("Dfd", "大陆湿润极冷夏", "#C6B2E2"),
+    ("Dwa", "大陆冬干热夏", "#4553A8"),
+    ("Dwb", "大陆冬干暖夏", "#6875C4"),
+    ("Dwc", "大陆冬干冷夏", "#929CDA"),
+    ("Dwd", "大陆冬干极冷夏", "#B8BFEA"),
+    ("Dsa", "大陆夏干热夏", "#8A3F7A"),
+    ("Dsb", "大陆夏干暖夏", "#A45D92"),
+    ("Dsc", "大陆夏干冷夏", "#BE83AE"),
+    ("Dsd", "大陆夏干极冷夏", "#D3A9C7"),
+    ("ET", "苔原", "#9AA6AE"),
+    ("EF", "冰原", "#F2F6FA"),
+]
+海色 = "#DCE6EC"                                     # 0 号:海洋
+气候名 = [c[1] for c in 类别]
+气候色 = [c[2] for c in 类别]
+码 = {c[0]: i + 1 for i, c in enumerate(类别)}       # 类型码 → 索引(1..N)
 
 
 def 纬向温(φ):
@@ -194,31 +229,87 @@ def 场():
     dy = np.radians(180.0 / (NY - 1)) * 6371.0                  # km/格(纬向)
     dx = np.radians(360.0 / NX) * 6371.0                        # km/格(经向,赤道)
     距海 = distance_transform_edt(陆掩, sampling=(dy, dx * 0.7))  # 陆地到海的距离 km
-    海洋性 = np.where(陆掩, 1.0 / (1.0 + 距海 / 700.0), 1.0)
+    海洋性 = np.where(陆掩, 1.0 / (1.0 + 距海 / 1300.0), 1.0)
     坡向 = np.gradient(高程, axis=1) / (c * np.radians(360.0 / NX) * 6371.0)
     抬升 = 纬向风(LAT) * 坡向
     抬升 = 抬升 / (np.std(抬升[陆掩]) + 1e-9)
     地形因子 = np.where(陆掩, np.clip(1.0 + 0.6 * 抬升, 0.2, 3.0), 1.0)
     降水 = np.clip(纬向雨(LAT) * 海洋性 * 地形因子, 10.0, 4000.0)
 
-    # 气候分类(细化 Köppen):年均温 + 年较差(最暖/最冷月) + 年降水。tC 为年均摄氏温。
+    # ---- 完整 Köppen 分类 ----
+    # 月温:年均温 ± 半年较差(纬度决定基础较差,大陆性放大;海洋年较差小)
     tC = 温度 - 273.15
-    # 年较差 A:随纬度增大,大陆性放大(海洋年较差小)
     A基 = np.interp(np.abs(LAT), [0.0, 20.0, 45.0, 90.0], [3.0, 8.0, 20.0, 40.0])
     大陆性 = np.where(陆掩, np.clip(1.0 - 海洋性, 0.0, 1.0), 0.0)
-    A = A基 * (1.0 + 0.6 * 大陆性)
-    Tw = 温度 + A / 2.0            # 最暖月均温
-    Tc = 温度 - A / 2.0            # 最冷月均温
-    气候 = np.select(
-        [Tw < 0.0,                                   # 冰原 EF
-         Tw < 10.0,                                  # 苔原 ET
-         (降水 < 10.0 * np.maximum(tC, 0.0)),         # 沙漠 BW
-         (降水 < 20.0 * np.maximum(tC, 0.0)),         # 草原 BS
-         (Tc >= 18.0) & (降水 >= 2000.0),             # 热带雨林 Af
-         (Tc >= 18.0) & (降水 >= 1200.0),             # 热带季风 Am
-         (Tc >= 18.0),                                # 热带草原 Aw
-         (Tc < -3.0)],                                # 寒温带 D
-        [1, 2, 3, 4, 7, 8, 9, 5], default=6)          # 6 温带 C(兜底)
+    A年差 = A基 * (1.0 + 0.6 * 大陆性)
+    月 = np.arange(12)[:, None, None]
+    位相 = np.where(LAT >= 0.0, 6.0, 0.0)[None]              # 最暖月:北半球 7 月,南半球 1 月
+    月温 = 温度[None] + (A年差 / 2.0)[None] * np.cos(2.0 * np.pi * (月 - 位相) / 12.0)
+    Tw = 月温.max(0) - 273.15                                # 最暖月均温
+    Tc = 月温.min(0) - 273.15                                # 最冷月均温
+    N10 = (月温 >= 283.15).sum(0)                            # ≥10℃ 的月数
+
+    # 月降水:纬向雨带随赤道辐合带季节移动(±15°),再按年总量归一
+    高日 = np.where(LAT[None] >= 0.0, (月 >= 3) & (月 <= 8), (月 < 3) | (月 > 8))
+    φ_ITCZ = 15.0 * np.cos(2.0 * np.pi * (月 - 6.0) / 12.0)
+    月雨基 = 纬向雨(LAT[None] - φ_ITCZ)
+    月雨 = np.clip(月雨基 * (降水 / 月雨基.mean(0))[None], 0.0, None)
+    大 = 1e9
+    夏月最大 = np.where(高日, 月雨, -大).max(0)
+    夏月最小 = np.where(高日, 月雨, 大).min(0)
+    冬月最大 = np.where(~高日, 月雨, -大).max(0)
+    冬月最小 = np.where(~高日, 月雨, 大).min(0)
+    P年 = 降水
+    夏雨 = (月雨 * 高日).sum(0)
+    冬雨 = P年 - 夏雨
+
+    气候 = np.zeros_like(温度, dtype=int)
+    未定 = 陆掩.copy()
+
+    # E 极地:最暖月 < 10℃(EF < 0℃)
+    极 = 未定 & (Tw < 10.0)
+    气候[极 & (Tw < 0.0)] = 码["EF"]
+    气候[极 & (Tw >= 0.0)] = 码["ET"]
+    未定 &= ~极
+
+    # B 干旱:年降水 < 干旱阈值(夏雨集中抬高阈值、冬雨集中压低)
+    夏占比 = 夏雨 / np.maximum(P年, 1e-6)
+    P阈 = 20.0 * tC + np.where(夏占比 >= 0.7, 280.0, np.where(夏占比 <= 0.3, 140.0, 0.0))
+    干 = 未定 & (P年 < P阈)
+    沙漠 = P年 < 0.5 * P阈
+    气候[干 & 沙漠 & (tC >= 18.0)] = 码["BWh"]
+    气候[干 & 沙漠 & (tC < 18.0)] = 码["BWk"]
+    气候[干 & ~沙漠 & (tC >= 18.0)] = 码["BSh"]
+    气候[干 & ~沙漠 & (tC < 18.0)] = 码["BSk"]
+    未定 &= ~干
+
+    # A 热带:最冷月 ≥ 18℃
+    热 = 未定 & (Tc >= 18.0)
+    Pm = 月雨.min(0)
+    Af = Pm >= 60.0
+    Am = (~Af) & (Pm >= 100.0 - P年 / 25.0)
+    气候[热 & Af] = 码["Af"]
+    气候[热 & Am] = 码["Am"]
+    气候[热 & ~Af & ~Am & (夏雨 >= 冬雨)] = 码["Aw"]        # 冬干
+    气候[热 & ~Af & ~Am & (夏雨 < 冬雨)] = 码["As"]          # 夏干
+    未定 &= ~热
+
+    # C 温带 / D 大陆:最冷月 > −3℃ 为 C,否则 D
+    夏干 = (夏月最小 < 40.0) & (夏月最小 < 冬月最大 / 3.0)
+    冬干 = 冬月最小 < 夏月最大 / 10.0
+    季节 = np.where(夏干, "s", np.where(冬干, "w", "f"))
+    温C = np.where(Tw >= 22.0, 0, np.where(N10 >= 4, 1, 2))
+    温D = np.where(Tc <= -38.0, 3, 温C)
+    季表 = {
+        "C": {"f": ["Cfa", "Cfb", "Cfc"], "w": ["Cwa", "Cwb", "Cwc"], "s": ["Csa", "Csb", "Csc"]},
+        "D": {"f": ["Dfa", "Dfb", "Dfc", "Dfd"], "w": ["Dwa", "Dwb", "Dwc", "Dwd"],
+              "s": ["Dsa", "Dsb", "Dsc", "Dsd"]},
+    }
+    for 基, 掩 in (("C", 未定 & (Tc > -3.0)), ("D", 未定 & (Tc <= -3.0))):
+        级 = 温C if 基 == "C" else 温D
+        for 季, 码表 in 季表[基].items():
+            for k, 类型 in enumerate(码表):
+                气候[掩 & (季节 == 季) & (级 == k)] = 码[类型]
     气候 = np.where(陆掩, 气候, 0)
 
     return dict(LON=LON, LAT=LAT, 陆掩=陆掩, 高程=高程, u=u, v=v, 块=块, 气候=气候,
@@ -226,30 +317,31 @@ def 场():
 
 
 # ---------- 图幅公共设置 ----------
-def 底图(ax, F, 标题):
+def 底图(ax, F, 标题, 线色="#ffffff"):
     ax.set_xlim(-180, 180); ax.set_ylim(-90, 90)
     ax.set_xticks(np.arange(-180, 181, 30)); ax.set_yticks(np.arange(-90, 91, 15))
     ax.set_xticklabels([f"{x}°" for x in np.arange(-180, 181, 30)], fontsize=7.5)
     ax.set_yticklabels([f"{y}°" for y in np.arange(-90, 91, 15)], fontsize=7.5)
-    ax.grid(color="#ffffff", alpha=0.15, lw=0.6, zorder=2)
+    ax.grid(color=线色, alpha=0.35, lw=0.6, zorder=2)
     ax.contour(F["LON"], F["LAT"], F["陆掩"].astype(float), levels=[0.5],
                colors="#111111", linewidths=0.6, zorder=4)
     for lo, hi, 名 in 风带:
         for s in (-1, 1):
-            ax.axhline(s * hi, color="#ffffff", lw=0.7, ls=":", alpha=0.6, zorder=3)
+            ax.axhline(s * hi, color=线色, lw=0.7, ls=":", alpha=0.7, zorder=3)
         ax.text(-0.05, (lo + hi) / 2.0, 名, fontsize=7, color="#555555",
                 ha="right", va="center", transform=ax.get_yaxis_transform(), clip_on=False)
     for i, b in enumerate(F["块"][:6]):
         名 = f"L{i+1}"
         ax.text(b["λ"], b["φ"], 名, fontsize=11, fontweight="bold", color="#111111",
-                ha="center", va="center", zorder=7)
+                ha="center", va="center", zorder=7,
+                path_effects=[pe.withStroke(linewidth=2.2, foreground="#ffffff")])
     ax.set_title(标题, fontsize=13, pad=10)
 
 
 def 出图(文件名, 体):
     out = os.path.join(图片, 文件名)
     fig = plt.figure(figsize=(12.0, 6.8), dpi=110)
-    ax = fig.add_axes([0.085, 0.15, 0.775, 0.75])
+    ax = fig.add_axes([0.085, 0.17, 0.775, 0.73])
     体(ax)
     fig.savefig(out, format="svg", transparent=True)
     fig.savefig("/tmp/" + os.path.basename(out) + ".png", dpi=110)
@@ -266,20 +358,28 @@ def main():
     print(f"纬向温 T=300-60·sin⁴φ;热带界 {Φ_热:.1f}°,寒带界 {Φ_寒:.1f}°;Γ_env={Γ_env*1000:.1f} K/km")
     print("=" * 100)
     print(f"{'块':>3}{'大陆':>5}{'面积%':>8}{'中心纬':>8}{'中心经':>9}{'纬度范围':>16}"
-          f"{'均海拔km':>9}{'峰值km':>8}{'地表均温K':>10}{'年降水mm':>10}{'主气候':>10}")
-    print("-" * 110)
+          f"{'均海拔km':>9}{'峰值km':>8}{'地表均温K':>10}{'年降水mm':>10}  {'主气候(Köppen)':<16}")
+    print("-" * 120)
     for i, b in enumerate(F["块"][:6]):
         m = b["掩"]
         纬程 = f"{b['φ1']:.0f}°~{b['φ2']:.0f}°"
         w = W[m]
         均温 = (F["温度"][m] * w).sum() / w.sum()
         均降 = (F["降水"][m] * w).sum() / w.sum()
-        众 = np.array([w[F["气候"][m] == k].sum() for k in range(8)])
-        主 = 气候名[int(np.argmax(众[1:])) + 1]
+        众 = np.array([w[F["气候"][m] == k].sum() for k in range(len(类别) + 1)])
+        k = int(np.argmax(众[1:])) + 1
+        主 = f"{类别[k-1][0]} {气候名[k-1]}"
         print(f"{b['标']:>3}{'L'+str(i+1):>5}{b['面积']*100:>8.2f}{b['φ']:>8.1f}{b['λ']:>9.1f}"
               f"{纬程:>16}{b['均海拔']/1000:>9.2f}{b['峰']/1000:>8.2f}"
-              f"{均温:>10.1f}{均降:>10.0f}{主:>10}")
-    print("-" * 110)
+              f"{均温:>10.1f}{均降:>10.0f}  {主}")
+    print("-" * 120)
+    # 全行星陆地气候构成(面积加权)
+    陆W = W[F["陆掩"]]
+    构成 = [(气候名[k-1], 类别[k-1][0], 陆W[F["气候"][F["陆掩"]] == k].sum() / 陆W.sum())
+            for k in range(1, len(类别) + 1)]
+    构成 = [c for c in 构成 if c[2] > 0]
+    构成.sort(key=lambda c: c[2], reverse=True)
+    print("陆地气候构成(面积占比):  " + "  ".join(f"{c[1]}{c[0]} {c[2]*100:.1f}%" for c in 构成))
     总 = sum(b["面积"] for b in F["块"][:6])
     print(f"前六块合计面积 {总*100:.2f}%  (正文标称 9.9+7.8+3.0+1.3+0.9+0.4 = {9.9+7.8+3.0+1.3+0.9+0.4:.1f}%)")
 
@@ -325,15 +425,19 @@ def main():
 
     # ---- 图4 气候 ----
     def 画气候(ax):
-        cmap = ListedColormap(气候色)
-        norm = BoundaryNorm(np.arange(-0.5, len(气候色) + 0.5, 1.0), len(气候色))
+        色表 = [海色] + 气候色                                # 0=海洋,其后依次为各气候类型
+        cmap = ListedColormap(色表)
+        norm = BoundaryNorm(np.arange(-0.5, len(色表) + 0.5, 1.0), len(色表))
         ax.pcolormesh(LON, LAT, F["气候"], cmap=cmap, norm=norm,
                       shading="auto", rasterized=True)
-        底图(ax, F, "主行星 气候图 · 年均温 × 年降水(Köppen 简化)")
-        图例 = [Patch(facecolor=气候色[i], edgecolor="#666666", label=气候名[i])
-                for i in range(1, len(气候名))]
-        ax.legend(handles=图例, loc="upper center", bbox_to_anchor=(0.5, -0.05),
-                  ncol=5, fontsize=7.5, frameon=False)
+        底图(ax, F, "主行星 气候图 · 完整 Köppen 分类", 线色="#4A4A4A")
+        现码 = sorted(set(np.unique(F["气候"][F["陆掩"]])) - {0})
+        图例 = [Patch(facecolor=气候色[k - 1], edgecolor="#666666",
+                      label=f"{类别[k-1][0]}  {气候名[k-1]}") for k in 现码]
+        ncol = 6 if len(图例) > 10 else 4
+        ax.legend(handles=图例, loc="upper center", bbox_to_anchor=(0.5, -0.04),
+                  ncol=ncol, fontsize=6.8, frameon=False, handlelength=1.1,
+                  columnspacing=1.0, handletextpad=0.5)
     出图("主行星气候图.svg", 画气候)
 
 
