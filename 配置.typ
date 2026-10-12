@@ -38,6 +38,7 @@
 // 入口页 内容/index.typ 传 "/index.pdf"。
 // / Site nav (页脚链接:): the PDF entry points at this page's own .pdf.
 #let 站点链接(本页PDF) = (
+  (标签: "首页", 网址: "/", 提示: "网站首页"),
   (标签: "PDF", 网址: 本页PDF, 提示: "下载本页 PDF"),
   (标签: "GitHub", 网址: "https://github.com/kych-net/UHDocs", 提示: "GitHub 仓库"),
 )
