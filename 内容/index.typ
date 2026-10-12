@@ -19,7 +19,7 @@
 // 站内导航(仅网页):导航栏只保留"首页"与外链,分页入口做成卡片放在这里(只列顶层页,子页见各目录页)。
 // / In-site nav (web only): the top nav keeps only 首页 + external links; the page
 // entries are cards here. Printed PDF skips it (links are useless on paper).
-#if is_web() [
+#if 网页编译() [
   #html.elem("nav", attrs: (class: "uh-navcards",))[
     #for (路径, 名) in 导航.filter(p => not p.at(0).contains("/")) [
       #html.elem("a", attrs: (class: "uh-navcard", href: "/" + 路径 + "/"))[#名]

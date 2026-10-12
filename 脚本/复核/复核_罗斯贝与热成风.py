@@ -73,15 +73,16 @@ print()
 print("=" * 76)
 print("二、热成风切变 Δu = (g/(f·T̄))·|∂T/∂y|·Δz")
 print("=" * 76)
-print("  纬向温度 T(φ) = 300 − 60·sin²φ (内容/地理/主行星.typ)")
-print("  ∂T/∂y = (dT/dφ)/a,  dT/dφ = −60·sin2φ  K/rad")
+print("  纬向温度 T(φ) = 300 − 60·sin⁴φ (内容/地理/主行星.typ)")
+print("  ∂T/∂y = (dT/dφ)/a,  dT/dφ = −240·sin³φ·cosφ  K/rad")
 
 def Tlat(φ):
-    return 300.0 - 60.0 * math.sin(math.radians(φ))**2
+    return 300.0 - 60.0 * math.sin(math.radians(φ))**4
 
 def dTdy(φ):
-    # dT/dφ = -60·sin(2φ) K/rad ; ∂T/∂y = (dT/dφ)/a
-    return (-60.0 * math.sin(math.radians(2*φ))) / a_planet
+    # dT/dφ = -240·sin³φ·cosφ K/rad ; ∂T/∂y = (dT/dφ)/a
+    s = math.sin(math.radians(φ))
+    return (-240.0 * s**3 * math.cos(math.radians(φ))) / a_planet
 
 print(f"\n  {'带(φ1–φ2)':>12} {'ΔT K':>7} {'f@mid':>10} {'∂T/∂y K/m':>12} {'Δu m/s':>8}")
 for φ1, φ2 in ((0, 20), (10, 30), (20, 40), (30, 50), (30, 60), (40, 60), (45, 65), (60, 80)):
@@ -97,7 +98,8 @@ for φ1, φ2 in ((0, 20), (10, 30), (20, 40), (30, 50), (30, 60), (40, 60), (45,
 print("\n  地球对照(ΔT 同式, g=9.81, T̄=260, a=6371km, Δz=11km):")
 a_E_ = 6.371e6
 def dTdy_E(φ):
-    return (-60.0 * math.sin(math.radians(2*φ))) / a_E_
+    s = math.sin(math.radians(φ))
+    return (-240.0 * s**3 * math.cos(math.radians(φ))) / a_E_
 for φ1, φ2 in ((30, 60),):
     φm = 0.5 * (φ1 + φ2)
     f = 2 * Om * math.sin(math.radians(φm))

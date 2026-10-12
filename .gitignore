@@ -2,3 +2,4 @@
 dist/
 .uhtemp/
 .packages/
+脚本/*/__pycache__
