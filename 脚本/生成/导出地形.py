@@ -19,7 +19,7 @@ OUT = os.path.join(ROOT, "附件", "主行星地形.csv")
 OUT_PNG = "/tmp/地形_csv_预览.png"
 
 SEED = 6347447676
-NX, NY = 480, 240
+NX, NY = 864, 432  # 与 图片/主行星地图.svg 的像素尺寸一致(列=经度,行=纬度)
 TARGET_OCEAN = 0.80
 SCALES = (1, 2, 4, 8, 16, 32)
 WEIGHTS = (0.40, 0.85, 1.00, 0.85, 0.65, 0.50)
