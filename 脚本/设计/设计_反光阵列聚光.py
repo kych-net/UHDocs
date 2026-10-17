@@ -61,33 +61,82 @@ print("单镜半径 ≲ 1000 km 时 η·ρ ≳ 0.7; 取单镜 ~1000 km, η = "
 ETA = (R_P / (R_SPOT0 + 1e6))**2 * RHO
 print()
 
-# ============ 聚光分档 ============
+# ============ 聚光分档(所有镜整体转角, 同步偏转调光) ============
 print("=" * 78)
-print("二、聚光分档: 增辐照 f% 需镜面积 A = f·A_planet/η, 质量 = A·σ")
+print("二、聚光分档: 所有镜一起转, 全部参与; 同步偏转角 δ 调增益")
+print("   阵列规模按控光节现有值: A_arr = 1.46e14 m² (1.5e11 kg)")
+print("   全对准: 光斑同心罩行星, 增益 = A_arr·ρ·η_geo/A_planet")
+print("   偏转 δ → 光斑中心偏移 s = 2δ·d, 行星截获按两圆重叠比下降")
 print("=" * 78)
-print(f"{'增辐照':>8} {'镜面积 m²':>12} {'质量 kg':>10} {'=散光5%质量':>12}")
-M_5 = 1.5e11
-for pct in (1, 5, 10, 20, 50, 100):
-    a = pct / 100 * A_PLANET / ETA
-    m = a * SIGMA
-    print(f"{pct:>7}% {a:>12.3e} {m:>10.3e} {m/M_5:>11.2f}×")
+A_ARR = 1.46e14
+R_SPOT = R_SPOT0 + 1e6              # 单镜 1000 km 分段
+ETA_GEO = (R_P / R_SPOT)**2
+GAIN_FULL = A_ARR * RHO * ETA_GEO / A_PLANET
+print(f"全对准增益 = +{GAIN_FULL*100:.1f}% (辐照 {S:.0f} → {S*(1+GAIN_FULL):.0f} W/m²)")
+
+def overlap(r1, r2, s_):
+    """两圆重叠面积"""
+    if s_ >= r1 + r2:
+        return 0.0
+    if s_ <= abs(r2 - r1):
+        return math.pi * min(r1, r2)**2
+    a1 = math.acos((s_**2 + r1**2 - r2**2) / (2 * s_ * r1)) * r1**2
+    a2 = math.acos((s_**2 + r2**2 - r1**2) / (2 * s_ * r2)) * r2**2
+    a3 = 0.5 * math.sqrt(max((-s_ + r1 + r2) * (s_ + r1 - r2)
+                             * (s_ - r1 + r2) * (s_ + r1 + r2), 0.0))
+    return a1 + a2 - a3
+
+def solve_offset(frac):
+    """给定截获比例(相对全对准), 二分解偏移 s"""
+    target = frac * math.pi * R_P**2
+    lo, hi = 0.0, R_P + R_SPOT
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if overlap(R_P, R_SPOT, mid) > target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+D_L1_KM = D_L1 / 1e3
+print(f"{'增辐照':>8} {'偏转角':>10} {'光斑偏移 km':>12} {'表均温变化':>10}")
+T0 = 255.0
+for pct in (1, 5, 10, 15):
+    frac = (pct / 100) / GAIN_FULL          # 相对全对准的截获比
+    if frac >= 1.0:
+        s_off, delta = 0.0, 0.0
+    else:
+        s_off = solve_offset(frac)
+        delta = math.degrees(s_off / (2 * D_L1))   # 偏转角
+    t = T0 * (1 + pct / 100)**0.25
+    print(f"{pct:>7}% {delta:>9.3f}° {s_off/1e3:>12.0f} {t-T0:>+9.1f} K")
 print()
 
 # ============ 上限 ============
 print("=" * 78)
 print("三、上限")
 print("=" * 78)
-# 阵列影盘面积
 A_FOOT = math.pi * (3.0e7)**2
 print(f"阵列影盘面积 = {A_FOOT:.3e} m² = {A_FOOT/A_PLANET:.1f}× 行星截面")
-# 填满影盘的镜面积 → 最大增辐照
-GAIN_MAX = A_FOOT * ETA / A_PLANET
-print(f"影盘全部铺满聚光单元 → 最大增辐照 = {GAIN_MAX*100:.0f}% "
+GAIN_MAX = A_FOOT * RHO * ETA_GEO / A_PLANET
+print(f"影盘铺满(单元 {A_FOOT*SIGMA:.2e} kg) → 最大增辐照 = +{GAIN_MAX*100:.0f}% "
       f"(辐照 {S:.0f} → {S*(1+GAIN_MAX):.0f} W/m²)")
-# 兼容散光: 散光占影盘 f_b%, 聚光面积 = 剩余
-print(f"同一阵列分时/分区复用: 散光 5% 占影盘 5%, 其余可铺聚光 → "
-      f"散光与聚光可并存, 总质量上限 {A_FOOT*SIGMA:.2e} kg (尘埃环占比 "
-      f"{A_FOOT*SIGMA/2e21*100:.1e}%)")
-# 光斑均匀性
-print(f"光斑半径 ≈ 行星半径(单镜 1000 km) → 行星面照度均匀, 无热斑; ")
-print("聚光上限受影盘面积约束, 不受聚光比约束(平面镜不聚焦太阳像)。")
+print(f"现有阵列({A_ARR:.2e} m²)全转聚光 = +{GAIN_FULL*100:.1f}%")
+print(f"光斑半径 ≈ 行星半径(单镜 1000 km) → 行星面照度均匀, 无热斑。")
+
+# ============ 散光偏转角(所有镜一起动) ============
+print()
+print("=" * 78)
+print("五、散光偏转角: 所有镜正面朝日为全挡位, 同步偏转 β → 投影 cosβ 下降")
+print("   散光比例 = (A_arr·cosβ)/A_foot")
+print("=" * 78)
+A_FOOT2 = math.pi * (3.0e7)**2
+RATIO = A_ARR / A_FOOT2
+print(f"现有阵列占影盘 = {RATIO*100:.2f}% (全挡位遮挡上限)")
+print(f"{'散光':>8} {'偏转角':>10} {'辐照':>8} {'表均温变化':>10}")
+for pct in (1, 3, 5):
+    beta = math.degrees(math.acos(pct / 100 / RATIO))
+    s_ = S * (1 - pct / 100)
+    t_ = T0 * (1 - pct / 100)**0.25
+    print(f"{pct:>7}% {beta:>9.1f}° {s_:>8.0f} {t_-T0:>+9.1f} K")
+print(f"散光上限 = {RATIO*100:.1f}% (β=0); 扩至影盘铺满可挡 100%")
