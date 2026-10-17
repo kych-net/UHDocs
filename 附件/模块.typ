@@ -420,3 +420,86 @@
     plot.annotate(draw.content((p, 0.98), text(size: 6.5pt, fill: c, str(p))), resize: false)
   }
 })
+
+// ===== 花图式(怪动植物,黑色花被,单生无花序) =====
+// 惯例:外圈萼片 K,其内花冠 C,再内雄蕊 A(花丝+花药点),中心心皮 G(圆=子房,其内点=胚珠)。
+// 两侧对称花(男花)在顶端加 ↑ 箭头;单生无花序,故不画花序轴符号。
+#let 花图式配色 = (
+  萼: rgb("#4a4a4a"),          // 萼片:浅黑
+  瓣: rgb("#141414"),          // 花冠:黑
+  花丝: rgb("#3a352d"),
+  花药: rgb("#b58900"),
+  心皮: rgb("#6d4c41"),
+  胚珠: rgb("#2b1a12"),
+  线: rgb("#3a352d"),
+  底: rgb("#f4eedd"),          // 模板纸色,掏空花被中心用
+)
+
+#let 花图式扇(起角, 止角, 半径, 色) = draw.arc((0, 0), start: 起角, stop: 止角,
+  radius: 半径, mode: "PIE", fill: 色, stroke: none)
+
+// 极坐标转直角
+#let 极(r, 角) = (r * calc.cos(角), r * calc.sin(角))
+
+#let 花图式(萼数: 0, 瓣数: 0, 雄数: 0, 心数: 0, 侧对称: false, 单心皮: false) = canvas(length: 1cm, {
+  let 色 = 花图式配色
+  let 缝 = 5deg
+  // 萼片环(与花冠相间半步)
+  if 萼数 > 0 {
+    let 步 = 360deg / 萼数
+    for i in range(萼数) {
+      花图式扇(i * 步 + 步 / 2 + 缝 / 2, (i + 1) * 步 + 步 / 2 - 缝 / 2, 1.95, 色.萼)
+    }
+  }
+  // 花冠环
+  if 瓣数 > 0 {
+    let 步 = 360deg / 瓣数
+    for i in range(瓣数) {
+      花图式扇(i * 步 + 缝 / 2, (i + 1) * 步 - 缝 / 2, 1.6, 色.瓣)
+    }
+  }
+  // 掏空中心,留环形花被
+  draw.circle((0, 0), radius: 1.05, fill: 色.底, stroke: none)
+  // 雄蕊:花丝自内向外带角度偏转(螺旋感),端点花药
+  if 雄数 > 0 {
+    let 步 = 360deg / 雄数
+    for i in range(雄数) {
+      let a = i * 步 + 步 / 2
+      draw.line(极(0.35, a), 极(0.9, a + 22deg), stroke: 色.花丝 + 0.9pt)
+      draw.circle(极(0.97, a + 24deg), radius: 0.11, fill: 色.花药, stroke: none)
+    }
+  }
+  // 心皮
+  if 单心皮 {
+    // 结果花:单个大子房,内一胚珠,顶端三裂柱头
+    draw.circle((0, 0), radius: 0.58, fill: 色.心皮.transparentize(55%), stroke: 色.心皮 + 1.2pt)
+    draw.circle((0, -0.08), radius: 0.16, fill: 色.胚珠, stroke: none)
+    for a in (55deg, 90deg, 125deg) {
+      draw.line(极(0.55, a), 极(0.9, a), stroke: 色.心皮 + 1.2pt)
+      draw.circle(极(0.94, a), radius: 0.07, fill: 色.心皮, stroke: none)
+    }
+  } else if 心数 > 0 {
+    let 环半径 = if 心数 > 6 { 0.62 } else { 0.42 }
+    let 子房半径 = if 心数 > 6 { 0.21 } else { 0.3 }
+    let 步 = 360deg / 心数
+    for i in range(心数) {
+      let a = i * 步 + 步 / 2
+      draw.circle(极(环半径, a), radius: 子房半径,
+        fill: 色.心皮.transparentize(55%), stroke: 色.心皮 + 1pt)
+      draw.line(极(环半径 + 子房半径, a), 极(环半径 + 子房半径 + 0.18, a),
+        stroke: 色.心皮 + 0.9pt)
+    }
+  }
+  // 花托
+  draw.circle((0, 0), radius: 0.06, fill: 色.线, stroke: none)
+  // 两侧对称标记
+  if 侧对称 {
+    draw.line((0, 2.15), (0, 2.55), stroke: (paint: 色.线, thickness: 1.2pt),
+      mark: (end: "stealth"))
+  }
+})
+
+#let 男花图式 = 花图式(萼数: 5, 瓣数: 5, 雄数: 12, 心数: 0, 侧对称: true)
+#let 受粉花图式 = 花图式(萼数: 5, 瓣数: 5, 雄数: 0, 心数: 12)
+#let 重组花图式 = 花图式(萼数: 0, 瓣数: 5, 雄数: 0, 心数: 5)
+#let 结果花图式 = 花图式(萼数: 0, 瓣数: 0, 雄数: 0, 心数: 1, 单心皮: true)
