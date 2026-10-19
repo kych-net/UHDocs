@@ -1,5 +1,6 @@
 .DS_Store
 dist/
+草稿/
 .uhtemp/
 .packages/
 脚本/*/__pycache__
