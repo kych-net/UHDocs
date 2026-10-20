@@ -4,3 +4,4 @@ dist/
 .uhtemp/
 .packages/
 **/__pycache__
+**/*.pdf
