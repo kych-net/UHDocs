@@ -1,7 +1,7 @@
 #import "../../配置.typ": *
 #import "../../附件/模块.typ": *
 
-#import "@preview/typed-smiles:0.13.0": smiles
+#import "@preview/molchemist:0.1.4": render-smiles
 
 
 = 主要用途
@@ -475,4 +475,8 @@ $"O"_2$直接作为废气排放
 
 == 面料
 
-包裹#smiles("*C(F)(F)C(*)(F)F")的碳纤维织成六边形
+包裹#render-smiles("*C(F)(F)C(*)(F)F")的碳纤维织成六边形并嵌入$"Be"$合金丝
+
+== 固定
+
+卡在#元素[怪动植物主侧线]中,同时通过#元素[辅助固定点]加固
