@@ -1,5 +1,8 @@
 #import "../配置.typ": *
 
+#import "@preview/cmarker:0.1.10": render
+#import "@preview/mitex:0.2.7": mitex
+
 
 = 排版规范
 
@@ -73,3 +76,20 @@
 == 单位
 
 温度用K,一律用国际单位
+
+= AI
+
+#render(
+  read("../AGENTS.md"),
+  h1-level: 2,          // Markdown 的 # → Typst 的 ==,与本节层级接上
+  set-document-title: false,
+  math: mitex,
+  scope: (
+    // Markdown 的 ![alt](src) → 带题注的 figure。
+    // src 相对 AGENTS.md 解析,而这里在 内容/ 下,故补一级 ../。
+    image: (source, alt: none, format: auto) => figure(
+      image("../" + source, alt: alt, format: format, width: 100%),
+      caption: alt,
+    ),
+  ),
+)
