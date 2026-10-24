@@ -27,6 +27,9 @@
   ]
 ]
 
+// 目录每级固定缩进 2 个汉字宽(2em);默认 auto 会随层级叠加递增。
+#show outline: set outline(indent: 2em)
+
 #目录()
 
 #set heading(numbering: "1.")
@@ -67,11 +70,11 @@
 
 #设定元素(level: 2)[接口]
 
-#TODO[接口]
+#待办[接口]
 
 == 底层实现
 
-#TODO[底层实现]
+#待办[底层实现]
 
 #导入("内容/怪物/index.typ", 偏移: 0)
 
@@ -231,7 +234,7 @@
 
 #block[
   #set heading(numbering: none)
-  = TODO
+  = 待办
 ]
 
-#TODO表格()
+#待办表格()
