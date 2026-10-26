@@ -16,6 +16,10 @@
 pdf:  ## 编译 内容/ 下全部 .typ 为 PDF(逐页经 脚本/页面.typ 套用模板)
 	@set -e; for f in $$(find 内容 -name '*.typ' | sort); do \
 	  rel="$${f#内容/}"; \
+	  d="$$(dirname "$$rel")"; if [ "$$d" = "." ]; then d=""; fi; \
+	  files=$$(cd "$$(dirname "$$f")" && for g in *.typ; do printf '"%s",' "$${g%.typ}"; done); \
+	  files="[$${files%,}]"; \
+	  idx="{\"目录\":\"$$d\",\"文件\":$$files}"; \
 	  case "$$rel" in \
 	    index.typ)   out="dist/index.pdf"; src="$$f"; args="";; \
 	    */index.typ) p="$${rel%/index.typ}"; out="dist/$$p.pdf"; \
@@ -25,12 +29,16 @@ pdf:  ## 编译 内容/ 下全部 .typ 为 PDF(逐页经 脚本/页面.typ 套�
 	  esac; \
 	  mkdir -p "$$(dirname "$$out")"; \
 	  echo "PDF  $$f -> $$out"; \
-	  typst compile --root . $$args "$$src" "$$out"; \
+	  typst compile --root . $$args --input "索引=$$idx" "$$src" "$$out"; \
 	done
 
 web:  ## 网页:多页站点,收尾跑 脚本/web_post.sh(HTML 导出为实验特性)
 	@set -e; for f in $$(find 内容 -name '*.typ' | sort); do \
 	  rel="$${f#内容/}"; \
+	  d="$$(dirname "$$rel")"; if [ "$$d" = "." ]; then d=""; fi; \
+	  files=$$(cd "$$(dirname "$$f")" && for g in *.typ; do printf '"%s",' "$${g%.typ}"; done); \
+	  files="[$${files%,}]"; \
+	  idx="{\"目录\":\"$$d\",\"文件\":$$files}"; \
 	  case "$$rel" in \
 	    index.typ)   out="dist/index.html"; src="$$f"; args="";; \
 	    */index.typ) p="$${rel%/index.typ}"; out="dist/$$p/index.html"; \
@@ -40,7 +48,7 @@ web:  ## 网页:多页站点,收尾跑 脚本/web_post.sh(HTML 导出为实验�
 	  esac; \
 	  mkdir -p "$$(dirname "$$out")"; \
 	  echo "HTML $$f -> $$out"; \
-	  typst compile --root . --features html --input web=true $$args --format html "$$src" "$$out"; \
+	  typst compile --root . --features html --input web=true $$args --input "索引=$$idx" --format html "$$src" "$$out"; \
 	done
 	@set -e; for f in $$(find 内容 -name '*.html' | sort); do \
 	  out="dist/$${f#内容/}"; \

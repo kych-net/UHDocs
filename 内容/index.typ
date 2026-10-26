@@ -27,6 +27,10 @@
   ]
 ]
 
+#if 网页编译() [
+  #索引(排除: ("index",))
+]
+
 // 目录每级固定缩进 2 个汉字宽(2em);默认 auto 会随层级叠加递增。
 #show outline: set outline(indent: 2em)
 
