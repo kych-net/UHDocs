@@ -24,7 +24,7 @@
 // / Web template: applied by the entry point via #show.
 #let 网页模板 = 地狱之下模板.with(
   title: "地狱之下",
-  subtitle: "不对称的奴役,侍寝与调教",
+  subtitle: "不对称的世界",
   author: "跨越晨昏",
   lang: "zh",
   paper: "a4",
