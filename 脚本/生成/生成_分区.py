@@ -4,11 +4,10 @@
 按气候与地形细化大陆分区
 
 把 L1–L6 各自切成若干次级区:对(气候型 × 海拔带)做连通区,按球面面积筛选。
-输出 图片/主行星分区图.svgz 与分区属性表(中心/面积/海拔/气温/降水/气候)。
+输出 图片/主行星分区图.svg 与分区属性表(中心/面积/海拔/气温/降水/气候)。
 运行: python3 脚本/生成/生成_分区.py
 """
 
-import gzip
 import os
 import importlib.util
 import numpy as np
@@ -140,10 +139,8 @@ def 主():
     fig.savefig(out, format="svg", transparent=True)
     fig.savefig("/tmp/主行星分区图.svg.png", dpi=110)
     plt.close(fig)
-    with open(out, "rb") as fi, gzip.GzipFile(out + "z", "wb", compresslevel=9, mtime=0) as fo:
-        fo.write(fi.read())
-    os.remove(out)
-    print(f"\n已写出 {out}z")
+    气候.压缩svg(out)
+    print(f"\n已写出 {out}")
     print(f"预览 /tmp/主行星分区图.svg.png  共 {编号} 个次级区")
 
 

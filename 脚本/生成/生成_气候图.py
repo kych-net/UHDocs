@@ -10,12 +10,12 @@
   洋流 由纬向风带驱动的地转流函数 ψ(∇²ψ=ζ,陆地 ψ=0)在真实海陆掩上求解;
   降水 由纬向雨带 × 海陆(海洋性) × 地形(迎风抬升/背风雨影)给出。
 
-输出 图片/主行星洋流图.svgz、主行星温度图.svgz、主行星降水图.svgz。
+输出 图片/主行星洋流图.svg、主行星温度图.svg、主行星降水图.svg。
 运行: python3 脚本/生成/生成_气候图.py
 """
 
-import gzip
 import os
+import re
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -323,6 +323,121 @@ def 场():
                 海温=海温, 温度=温度, 异常海=异常海, 降水=降水, lat=lat)
 
 
+# ---------- SVG 压缩(抽稀 0.5 pt + 0.5 网格 + 相对坐标 + 删未用字形) ----------
+_SVG记号 = re.compile(r"[MmLlZzCcSsQqTtAaHhVv]|-?\d+(?:\.\d+)?(?:e[-+]?\d+)?")
+网格 = 0.5
+抽稀容差 = 0.5
+
+
+def _抽稀(pts, eps):
+    """Douglas-Peucker:删掉偏离首尾连线不到 eps 的点。"""
+    if len(pts) < 3:
+        return pts
+    留 = [False] * len(pts)
+    留[0] = 留[-1] = True
+    栈 = [(0, len(pts) - 1)]
+    while 栈:
+        i, j = 栈.pop()
+        if j <= i + 1:
+            continue
+        x1, y1 = pts[i]
+        x2, y2 = pts[j]
+        dx, dy = x2 - x1, y2 - y1
+        长 = np.hypot(dx, dy)
+        最远, 最远i = -1.0, -1
+        for k in range(i + 1, j):
+            x0, y0 = pts[k]
+            if 长 == 0:
+                偏 = np.hypot(x0 - x1, y0 - y1)
+            else:
+                偏 = abs(dx * (y1 - y0) - (x1 - x0) * dy) / 长
+            if 偏 > 最远:
+                最远, 最远i = 偏, k
+        if 最远 > eps:
+            留[最远i] = True
+            栈.append((i, 最远i))
+            栈.append((最远i, j))
+    return [p for p, k in zip(pts, 留) if k]
+
+
+def _数格式(v):
+    s = f"{v:.1f}".rstrip("0").rstrip(".")
+    return "0" if s in ("-0", "") else s
+
+
+def _数列(值):
+    """连写坐标:负数自带分隔符,正数前留一个空格。"""
+    出 = ""
+    for s in 值:
+        if 出 and not s.startswith("-"):
+            出 += " "
+        出 += s
+    return 出
+
+
+def _压缩路径(d):
+    """M/L/z 折线:0.5 网格取整、0.5 pt 抽稀、转相对坐标;含曲线命令则原样返回。"""
+    记号 = _SVG记号.findall(d)
+    if any(t.isalpha() and t not in "MmLlZz" for t in 记号):
+        return d
+    出, i, n = [], 0, len(记号)
+    当前 = (0.0, 0.0)
+    while i < n:
+        t = 记号[i]
+        if t in "Zz":
+            出.append("z")
+            i += 1
+            continue
+        if t not in "MmLl":
+            return d
+        相对 = t.islower()
+        i += 1
+        pts = []
+        while i < n:
+            if 记号[i] in "MmLl":
+                if 记号[i] in "Mm":
+                    break
+                相对 = 记号[i].islower()
+                i += 1
+                continue
+            if 记号[i] in "Zz":
+                break
+            if 记号[i].isalpha() or i + 1 >= n:
+                return d
+            x, y = float(记号[i]), float(记号[i + 1])
+            if 相对:
+                x += 当前[0]
+                y += 当前[1]
+            当前 = (x, y)
+            pts.append((round(x / 网格) * 网格, round(y / 网格) * 网格))
+            i += 2
+        if not pts:
+            return d
+        pts = _抽稀(pts, 抽稀容差)
+        出.append("M" + _数列([_数格式(pts[0][0]), _数格式(pts[0][1])]))
+        if len(pts) > 1:
+            相 = []
+            上 = pts[0]
+            for x, y in pts[1:]:
+                相 += [_数格式(x - 上[0]), _数格式(y - 上[1])]
+                上 = (x, y)
+            出.append("l" + _数列(相))
+    return "".join(出)
+
+
+def 压缩svg(路径):
+    s = open(路径, encoding="utf-8").read()
+    s = re.sub(r"<metadata>.*?</metadata>", "", s, flags=re.S)
+    s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
+    引用 = set(re.findall(r'(?:xlink:href|href)="#([^"]+)"', s)) | \
+        set(re.findall(r"url\(#([^)]+)\)", s))
+    s = re.sub(r'<path id="([^"]+)"[^>]*/>',
+               lambda m: m.group(0) if m.group(1) in 引用 else "", s)
+    s = re.sub(r' d="([^"]*)"', lambda m: ' d="%s"' % _压缩路径(m.group(1)), s)
+    s = re.sub(r">\s+<", "><", s).replace("\n", "")
+    open(路径, "w", encoding="utf-8").write(s)
+
+
 # ---------- 图幅公共设置 ----------
 def 底图(ax, F, 标题, 线色="#ffffff"):
     ax.set_xlim(-180, 180); ax.set_ylim(-90, 90)
@@ -353,10 +468,8 @@ def 出图(文件名, 体):
     fig.savefig(out, format="svg", transparent=True)
     fig.savefig("/tmp/" + os.path.basename(out) + ".png", dpi=110)
     plt.close(fig)
-    with open(out, "rb") as fi, gzip.GzipFile(out + "z", "wb", compresslevel=9, mtime=0) as fo:
-        fo.write(fi.read())
-    os.remove(out)
-    print("已写出", out + "z")
+    压缩svg(out)
+    print("已写出", out)
 
 
 def main():

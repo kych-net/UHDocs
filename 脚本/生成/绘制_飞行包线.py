@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 《地狱之下》怪动植物 飞行包线图（重绘,赤道与极点各一张）
-输出 图片/飞行-赤道.svgz 与 图片/飞行-极点.svgz。
+输出 图片/飞行-赤道.svg 与 图片/飞行-极点.svg。
 大气模型与 附件/模块.typ 一致:低空均匀成分 + 三层温度(对流层干绝热 / 平流层升温 /
 中间层降温) + 静力平衡积分压强;区域仅海平面温度不同(赤道 300 K,极点 240 K),
 故对流层顶高、密度、声速、航程随区域变化。设定卡的航程数值仅作参考,一律按物理模型算。
@@ -21,10 +21,9 @@
   - 升阻比取物理极曲线 L/D = C_L /(C_D0 + C_L²/(π AR e)),C_L = 2 m g/(ρ V² S);
     取 e 使 (L/D)max = 68,与正文「升阻比约 68:1」一致
 
-只写 图片/飞行-*.svgz。运行: python3 脚本/绘制_飞行包线.py
+只写 图片/飞行-*.svg。运行: python3 脚本/绘制_飞行包线.py
 """
 
-import gzip
 import os
 import re
 
@@ -144,8 +143,10 @@ def 气动加热(区温, h):
 区域 = [("赤道", 300.0, "图片/飞行-赤道"),
         ("极点", 240.0, "图片/飞行-极点")]
 
-# ---------- SVG 压缩(坐标降精度 + 共线点抽稀) ----------
-_SVG记号 = re.compile(r"[MmLlZzCcSsQqTtAaHhVv]|-?\d+(?:\.\d+)?(?:e-?\d+)?")
+# ---------- SVG 压缩(抽稀 0.5 pt + 0.5 网格 + 相对坐标 + 删未用字形) ----------
+_SVG记号 = re.compile(r"[MmLlZzCcSsQqTtAaHhVv]|-?\d+(?:\.\d+)?(?:e[-+]?\d+)?")
+网格 = 0.5
+抽稀容差 = 0.5
 
 
 def _抽稀(pts, eps):
@@ -179,17 +180,28 @@ def _抽稀(pts, eps):
     return [p for p, k in zip(pts, 留) if k]
 
 
-def _数(v):
-    s = f"{v:.2f}".rstrip("0").rstrip(".")
+def _数格式(v):
+    s = f"{v:.1f}".rstrip("0").rstrip(".")
     return "0" if s in ("-0", "") else s
 
 
+def _数列(值):
+    """连写坐标:负数自带分隔符,正数前留一个空格。"""
+    出 = ""
+    for s in 值:
+        if 出 and not s.startswith("-"):
+            出 += " "
+        出 += s
+    return 出
+
+
 def _压缩路径(d):
-    """M/L/z 折线:坐标降到 2 位小数,共线点按 0.01 pt 抽稀;含曲线命令则原样返回。"""
+    """M/L/z 折线:0.5 网格取整、0.5 pt 抽稀、转相对坐标;含曲线命令则原样返回。"""
     记号 = _SVG记号.findall(d)
     if any(t.isalpha() and t not in "MmLlZz" for t in 记号):
         return d
     出, i, n = [], 0, len(记号)
+    当前 = (0.0, 0.0)
     while i < n:
         t = 记号[i]
         if t in "Zz":
@@ -198,38 +210,49 @@ def _压缩路径(d):
             continue
         if t not in "MmLl":
             return d
+        相对 = t.islower()
         i += 1
         pts = []
         while i < n:
             if 记号[i] in "MmLl":
+                if 记号[i] in "Mm":
+                    break
+                相对 = 记号[i].islower()
                 i += 1
                 continue
             if 记号[i] in "Zz":
                 break
             if 记号[i].isalpha() or i + 1 >= n:
                 return d
-            pts.append((float(记号[i]), float(记号[i + 1])))
+            x, y = float(记号[i]), float(记号[i + 1])
+            if 相对:
+                x += 当前[0]
+                y += 当前[1]
+            当前 = (x, y)
+            pts.append((round(x / 网格) * 网格, round(y / 网格) * 网格))
             i += 2
         if not pts:
             return d
-        pts = _抽稀(pts, 0.01)
-        出.append("M" + _数(pts[0][0]) + " " + _数(pts[0][1]))
-        for x, y in pts[1:]:
-            出.append("L" + _数(x) + " " + _数(y))
+        pts = _抽稀(pts, 抽稀容差)
+        出.append("M" + _数列([_数格式(pts[0][0]), _数格式(pts[0][1])]))
+        if len(pts) > 1:
+            相 = []
+            上 = pts[0]
+            for x, y in pts[1:]:
+                相 += [_数格式(x - 上[0]), _数格式(y - 上[1])]
+                上 = (x, y)
+            出.append("l" + _数列(相))
     return "".join(出)
-
-
-def 压缩为svgz(路径):
-    """把 svg 压成同名 .svgz(mtime 固定,内容可复现),再删掉原 svg。"""
-    with open(路径, "rb") as fi, gzip.GzipFile(路径 + "z", "wb", compresslevel=9, mtime=0) as fo:
-        fo.write(fi.read())
-    os.remove(路径)
 
 
 def 压缩svg(路径):
     s = open(路径, encoding="utf-8").read()
     s = re.sub(r"<metadata>.*?</metadata>", "", s, flags=re.S)
     s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
+    引用 = set(re.findall(r'(?:xlink:href|href)="#([^"]+)"', s)) | \
+        set(re.findall(r"url\(#([^)]+)\)", s))
+    s = re.sub(r'<path id="([^"]+)"[^>]*/>',
+               lambda m: m.group(0) if m.group(1) in 引用 else "", s)
     s = re.sub(r' d="([^"]*)"', lambda m: ' d="%s"' % _压缩路径(m.group(1)), s)
     s = re.sub(r">\s+<", "><", s).replace("\n", "")
     open(路径, "w", encoding="utf-8").write(s)
@@ -294,12 +317,11 @@ def 绘图(区名, 区温, 出图):
     ax.grid(True, alpha=0.25)
     ax.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
 
-    出图svg = 出图 + ".svg"   # 中间文本 svg,压缩成 svgz 后删除
+    出图svg = 出图 + ".svg"   # 直接写压缩后的文本 svg
     fig.tight_layout()
     fig.savefig(出图svg, transparent=True)
     plt.close(fig)
     压缩svg(出图svg)
-    压缩为svgz(出图svg)
 
     print(f"[{区名} {区温:.0f} K] 对流层顶 {对流层顶高(区温)/1000:.1f} km  "
           f"ρ₀={密度(区温,0):.3f}  a₀={声速(区温,0):.0f} m/s")
@@ -308,7 +330,7 @@ def 绘图(区名, 区温, 出图):
     print(f"  空载航程上限 ≈ {np.nanmax(Rng):.0f} km")
     print(f"  上界@20km={min(推力上限(20), 气动加热(区温,20e3)):.0f}  "
           f"@40km={min(推力上限(40), 气动加热(区温,40e3)):.0f} m/s (卡 465/570)")
-    print(f"  已写入 {出图}.svgz")
+    print(f"  已写入 {出图}.svg")
 
 
 for 区名, 区温, 出图 in 区域:
