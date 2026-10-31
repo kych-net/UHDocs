@@ -10,10 +10,11 @@
   洋流 由纬向风带驱动的地转流函数 ψ(∇²ψ=ζ,陆地 ψ=0)在真实海陆掩上求解;
   降水 由纬向雨带 × 海陆(海洋性) × 地形(迎风抬升/背风雨影)给出。
 
-输出 图片/主行星洋流图.svg、主行星温度图.svg、主行星降水图.svg。
+输出 图片/主行星洋流图.svgz、主行星温度图.svgz、主行星降水图.svgz。
 运行: python3 脚本/生成/生成_气候图.py
 """
 
+import gzip
 import os
 import numpy as np
 import matplotlib
@@ -352,7 +353,10 @@ def 出图(文件名, 体):
     fig.savefig(out, format="svg", transparent=True)
     fig.savefig("/tmp/" + os.path.basename(out) + ".png", dpi=110)
     plt.close(fig)
-    print("已写出", out)
+    with open(out, "rb") as fi, gzip.GzipFile(out + "z", "wb", compresslevel=9, mtime=0) as fo:
+        fo.write(fi.read())
+    os.remove(out)
+    print("已写出", out + "z")
 
 
 def main():
