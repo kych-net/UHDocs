@@ -19,7 +19,7 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
 | `内容/<名>.typ` | 各章正文,**自带 `#import "../配置.typ": *`**;路径即 URL 段 |
 | `内容/<目录>/index.typ` | 目录页正文 → URL `/<目录>/` |
 | `脚本/页面.typ` | 网页各独立页的统一入口,`make` 传 `--input 页=<路径> --input 源=<路径>` |
-| `脚本/web_post.sh` | 网页后处理:抽公共 CSS 到 `/assets/underhell.css`、把定义在别页的元素连成链接、注入目录/评论开合脚本、把内联图片改成外链 |
+| `脚本/web_post.sh` | 网页后处理:抽公共 CSS 到 `/assets/underhell.css`、把定义在别页的元素连成链接、注入目录/评论开合脚本、把内联图片改成外链,并写 SEO 标签与 JSON-LD(Book / Article / BreadcrumbList)|
 | `脚本/抽取内嵌图片.sh` | 由 `web_post.sh` 调用:把 Typst 内联的 base64 图片抽到 `dist/图片/`,页面改引 `/图片/xxx`,并补 `loading="lazy"`(只用 sh/awk/base64,不依赖 Python) |
 | `附件/元素系统.csv` | 元素系统宽表(首列=元素 id,其后每列=一个系统) |
 | `图片/` | 图片素材,已配置 Git LFS;`make web` 会把用到的图抽成产物 `dist/图片/`(对外 `/图片/xxx`) |
@@ -41,7 +41,9 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
   为键(首页 `"index"`),值为 `(描述: …, 关键词: (…))`。`脚本/页面.typ` 与 `内容/index.typ` 用
   `#set document` 输出 description/keywords;`脚本/web_post.sh` 据此生成 canonical、Open Graph、
   `dist/sitemap.xml` 与 `dist/robots.txt`,并给非首页 `<title>` 补 `· 品牌名` 后缀。
-  **未登记的页会被标 noindex 且不进 sitemap**——新增页面要在这里补条目。
+  同时按页注入 `<script type="application/ld+json">`:首页 `Book`,其余页 `Article` + `BreadcrumbList`
+  (面包屑各级名取该级页面的 `<title>`,`dateModified` 取该页源 `.typ` 的最后提交日期,纯 awk 拼 JSON)。
+  **未登记的页会被标 noindex、不进 sitemap,也不注入 JSON-LD**——新增页面要在这里补条目。
 
 ## 编译
 

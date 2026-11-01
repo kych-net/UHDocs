@@ -1,21 +1,23 @@
 #!/bin/sh
-# 网页后处理:抽公共样式表、连跨页元素、注入开合脚本、内嵌图片改外链。
+# 网页后处理:抽公共样式表、连跨页元素、注入开合脚本、内嵌图片改外链、写 SEO 与 JSON-LD。
 #
 # 用法:sh 脚本/web_post.sh [dist]
-# make web 逐页导出 HTML 后调用。做四件模板包本身不做的多页站点级优化
+# make web 逐页导出 HTML 后调用。做五件模板包本身不做的多页站点级优化
 # (见 web.css / lib.typ 的说明):
 #   1. 样式表抽出一份 /assets/underhell.css,各页由内联 <style> 换成 <link>,多页共用;
 #   2. 定义在别页的元素,由 title="未定义" 的 span 改成指向定义页的链接;
 #   3. 注入目录/评论的开合脚本;
 #   4. Typst 内联成 base64 的 image() 抽成 dist/图片/ 外链并补 loading="lazy"
 #      (交给 脚本/抽取内嵌图片.sh;首页是全量入口,同一批图原本在 4 个页面各嵌一份)。
+#   5. 逐页 SEO:canonical / Open Graph / robots 标记 / 标题品牌后缀 / sitemap.xml / robots.txt,
+#      外加按页注入 JSON-LD @graph(首页 Book,其余页 Article + BreadcrumbList)。
 # 元素定义取自 内容/ 下的 #设定元素(level: n)[名]、显式标题标签 `= 标题 <标签>`,
 # 以及 附件/元素系统.csv 的「默认」列别名:显示名与锚点 id 不同时,链接片段用 id
 # (标题锚点是 id,页面上显示的却是「默认」列名,如 古龙→龙)。
 #
 # / Web post-processing: extract one shared /assets/underhell.css, rewrite
-# cross-page element spans into links, inject the toggle script, and turn
-# Typst's inlined base64 images into /图片/ files with lazy loading.
+# cross-page element spans into links, inject the toggle script, turn Typst's
+# inlined base64 images into /图片/ files, and write per-page SEO tags plus JSON-LD.
 # Element definitions come from 内容/ and the 附件/元素系统.csv default column.
 
 set -e
@@ -126,6 +128,24 @@ if [ ! -s "$tmpdir/htmls" ]; then
   echo "web_post: 未找到 HTML 产物"
   exit 0
 fi
+
+# ---------- 页面标题表(供 JSON-LD 面包屑取各级显示名)----------
+# 面包屑要显示"地狱之下 › 地理 › 主行星"这样的层级名,而每一级路径本身就是一个页面,
+# 所以先扫一遍产物,收一份 页URL → <title> 的表,后面按祖先路径回查。
+# / Ancestor paths are themselves pages, so collect page → title for breadcrumb labels.
+: > "$tmpdir/titles"
+while IFS= read -r file; do
+  prel=${file#"$dist/"}
+  case "$prel" in
+    */*) tpage="/${prel%/*}/" ;;
+    *)   tpage="/" ;;
+  esac
+  ttext=$(grep -oE '<title>[^<]*</title>' "$file" 2>/dev/null | head -1 |
+          sed -E 's|<title>(.*)</title>|\1|' | tr -d '\t\n')
+  penc="$site$tpage"
+  penc=$(urlenc "$penc")
+  printf '%s\t%s\t%s\n' "$tpage" "$ttext" "$penc" >> "$tmpdir/titles"
+done < "$tmpdir/htmls"
 
 # ---------- 内嵌网页样式 → 外部 /assets/underhell.css ----------
 found=0
@@ -254,6 +274,92 @@ while IFS= read -r file; do
   fi
   if [ "$page" = "/" ]; then ogtype="website"; else ogtype="article"; fi
   if [ "$page" = "/" ] || [ -z "$brand" ]; then newtitle=""; else newtitle="$title · $brand"; fi
+
+  # ---------- JSON-LD:Book / Article + BreadcrumbList ----------
+  # 只给已索引页(有 description)生成,noindex 页不喂结构化数据。
+  # 首页出 Book,其余页出 Article(isPartOf 指向首页那本书)+ 按 URL 层级还原的面包屑,
+  # 面包屑各级显示名回查 页→标题 表,拿不到就退回路径段(路径段本身就是中文标题)。
+  # dateModified 取该页源 .typ 的最后提交日期,拿不到就整个字段不写。
+  # 幂等:靠独立标记 uh-jsonld 判定(不能拿 application/ld+json 当标记——附录页会把
+  # SKILL.md 正文渲染进页面,文里就含那个字符串,会把注入误跳过)。
+  ld=""
+  if [ -n "$desc" ] && ! grep -q 'uh-jsonld' "$file" 2>/dev/null; then
+    author=$(grep -oE '<meta name="authors" content="[^"]*">' "$file" 2>/dev/null | head -1 |
+             sed -E 's|.*content="(.*)">|\1|')
+    pdir=${page%/}
+    mod=""
+    for s in "$root/内容$pdir.typ" "$root/内容${page}index.typ"; do
+      if [ -f "$s" ] && command -v git >/dev/null 2>&1; then
+        mod=$(git -C "$root" log -1 --format=%cI -- "$s" 2>/dev/null | cut -c1-10)
+        [ -n "$mod" ] && break
+      fi
+    done
+    ld=$(awk -v titles="$tmpdir/titles" -v page="$page" -v canon="$canon" -v title="$title" \
+             -v desc="$desc" -v author="$author" -v brand="$brand" -v site="$site" -v mod="$mod" '
+      function jesc(s) {
+        gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s)
+        gsub(/</, "\\u003c", s); gsub(/>/, "\\u003e", s)
+        gsub(/\r/, " ", s);  gsub(/\n/, " ", s); gsub(/\t/, " ", s)
+        return s
+      }
+      function person(n) {
+        if (n == "") return ""
+        return "{\"@type\":\"Person\",\"name\":\"" jesc(n) "\"}"
+      }
+      BEGIN {
+        while ((getline l < titles) > 0) {
+          nf = split(l, f, "\t")
+          if (nf < 2) continue
+          TN[f[1]] = f[2]
+          TU[f[1]] = (nf >= 3 ? f[3] : "")
+        }
+        close(titles)
+        home = site "/"
+        P = person(author)
+        bookname = (brand == "" ? title : brand)
+
+        if (page == "/") {
+          node = "{\"@type\":\"Book\",\"@id\":\"" jesc(canon) "#book\""
+          node = node ",\"name\":\"" jesc(bookname) "\""
+          if (P != "") { node = node ",\"author\":" P ",\"publisher\":" P }
+          node = node ",\"inLanguage\":\"zh-CN\",\"url\":\"" jesc(canon) "\""
+          node = node ",\"description\":\"" jesc(desc) "\""
+          if (mod != "") node = node ",\"dateModified\":\"" mod "\""
+          node = node "}"
+          graph = node
+        } else {
+          node = "{\"@type\":\"Article\",\"@id\":\"" jesc(canon) "#article\""
+          node = node ",\"headline\":\"" jesc(title) "\",\"url\":\"" jesc(canon) "\""
+          node = node ",\"inLanguage\":\"zh-CN\""
+          if (P != "") node = node ",\"author\":" P
+          node = node ",\"isPartOf\":{\"@type\":\"Book\",\"name\":\"" jesc(bookname) "\",\"url\":\"" jesc(home) "\"}"
+          node = node ",\"description\":\"" jesc(desc) "\""
+          if (mod != "") node = node ",\"dateModified\":\"" mod "\""
+          node = node "}"
+
+          items = "{\"@type\":\"ListItem\",\"position\":1,\"name\":\"" jesc(bookname) "\",\"item\":\"" jesc(home) "\"}"
+          pos = 1
+          acc = ""
+          m = split(page, seg, "/")
+          for (i = 2; i < m; i++) {
+            if (seg[i] == "") continue
+            acc = acc "/" seg[i] "/"
+            nm = ((acc in TN) && TN[acc] != "") ? TN[acc] : seg[i]
+            uu = ((acc in TU) && TU[acc] != "") ? TU[acc] : site acc
+            pos = pos + 1
+            items = items ",{\"@type\":\"ListItem\",\"position\":" pos ",\"name\":\"" jesc(nm) "\",\"item\":\"" jesc(uu) "\"}"
+          }
+          graph = "{\"@type\":\"BreadcrumbList\",\"@id\":\"" jesc(canon) "#breadcrumb\""
+          graph = graph ",\"itemListElement\":[" items "]}"
+          graph = graph "," node
+        }
+        printf "%s", "<!--uh-jsonld--><script type=\"application/ld+json\">"
+        printf "%s", "{\"@context\":\"https://schema.org\",\"@graph\":[" graph "]}"
+        printf "%s", "</script>"
+      }
+    ' </dev/null)
+  fi
+
   {
     printf '<meta name="robots" content="%s">' "$robots"
     printf '<link rel="canonical" href="%s">' "$canon"
@@ -266,6 +372,7 @@ while IFS= read -r file; do
     printf '<meta name="twitter:card" content="summary">'
     printf '<meta name="twitter:title" content="%s">' "$title"
     if [ -n "$desc" ]; then printf '<meta name="twitter:description" content="%s">' "$desc"; fi
+    if [ -n "$ld" ]; then printf '%s' "$ld"; fi
   } > "$tmpdir/extra.html"
   awk -v extrafile="$tmpdir/extra.html" -v newtitle="$newtitle" '
     BEGIN {
