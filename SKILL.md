@@ -171,7 +171,12 @@ PDF 走同一套页面集合:入口 `内容/index.typ` 直接编译 → `dist/in
   `.webfonts/README.md` 放入四个文件。缺字体不影响构建,网页回退系统字体。
 - 源目录以 `.` 开头(默认隐藏),与对外路径**不同名**:`make web` 把 `.webfonts/*.woff2`
   拷到 `dist/webfonts/`(产物目录名固定为 `webfonts`,对应 `/webfonts/…` URL,勿改);
-  `.github/workflows/web.yml` 在有字体时按页面实际用字子集化后再发布。
+  `.github/workflows/web.yml` 在有字体时**按字族各自取字**子集化后再发布:从产物
+  `assets/underhell.css` 读 `@font-face` 与 `--uh-*-font`,按选择器(标签 / `.class` /
+  `[class^="…"]`)判定哪些元素由哪个族渲染,每个字体只带它真正要显示的字 ——
+  标题/粗体/评论三族只需各自那几百字,正文族仍用全站并集。
+  任何环节认不出来(CSS 缺失、`@font-face` 对不上、选择器形态不认识)一律退回全站并集;
+  子集写完再用 `cmap` 复核,缺字形就重做。**宁大勿坏,最坏等于旧行为,不会发出未子集的全字库。**
 
 ## 语法规范
 
@@ -191,7 +196,7 @@ summary structures and forced conclusions.
 
 `make web` 的 `dist/` 是纯静态站点(`.webfonts/` 有字体时产物含 `webfonts/`,有图片时含 `图片/`)。
 推送 `main` 后 `.github/workflows/web.yml` 会重建、把页面引用到而产物缺失的图片从 `图片/` 补进
-`dist/图片/`、按页面用字子集化字体,并强推 `web` 分支;托管平台(Cloudflare Pages / EdgeOne
+`dist/图片/`、按字族各自用字子集化字体,并强推 `web` 分支;托管平台(Cloudflare Pages / EdgeOne
 Pages)绑定 `web` 分支并**关闭平台侧构建**即可。分平台步骤见根 `README.md`「部署网页」。
 
 `/图片/*` 会被 CDN 按 URL 缓存:matplotlib 重跑覆盖同名源图时,产物字节变了但 URL 没变,

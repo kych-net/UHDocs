@@ -110,8 +110,13 @@ jobs:
           echo "外链图片引用 $(wc -l < /tmp/imgrefs.txt | tr -d ' ') 个,源目录补复制 $copied 个"
           ls -l dist/图片/
 
-      # 源 .webfonts/ 有字体时,从产物 HTML 提取实际用字,把全字库 woff2 原地子集化
-      # (同名覆盖,@font-face 无需改动);没有字体则跳过,不影响构建。
+      # 源 .webfonts/ 有字体时把全字库 woff2 原地子集化(同名覆盖,@font-face 无需改动);
+      # 没有字体则跳过,不影响构建。
+      # 取字按"字族"分别做:从产物 CSS 读出 @font-face 与 --uh-*-font,再按选择器
+      # (标签 / .class / [class^="…"])判断哪些 HTML 元素由哪个族渲染,每个字体只带
+      # 自己真正要显示的字。正文族仍用全站并集,故体积不变、也不会缺字。
+      # 任何环节解析不出来(CSS 缺失、@font-face 对不上、选择器形态不认识)一律退回
+      # 全站并集;子集写完还会用 cmap 复核,缺一个字形就重做为全站并集——宁大勿坏。
       - name: 字体子集化(仅 .webfonts/ 有字体时)
         run: |
           if [ -z "$(find dist/webfonts -maxdepth 1 -name '*.woff2' 2>/dev/null)" ]; then
@@ -123,37 +128,138 @@ jobs:
               || sudo apt-get install -y -qq python3-fonttools python3-brotli
           fi
           python3 - <<'PY'
-          import html, pathlib, subprocess, sys
+          import html as htmllib, pathlib, re, subprocess, sys
+          from html.parser import HTMLParser
+          from fontTools.ttLib import TTFont
 
           dist = pathlib.Path("dist")
-          text = "\n".join(
-              p.read_text(encoding="utf-8") for p in sorted(dist.rglob("*.html"))
-          )
-          chars = set(text) | set(html.unescape(text))
-          chars |= {chr(c) for c in range(0x20, 0x7F)}
-          chars |= set("　、。，．·…—～－／｜（）〈〉《》「」『』【】“”‘’※→←↑↓")
 
-          tf = pathlib.Path("/tmp/uh-web-chars.txt")
-          tf.write_text("".join(sorted(chars)), encoding="utf-8")
-          print(f"用字提取:{len(chars)} 个字符")
-
-          before_all = after_all = 0
-          for f in sorted((dist / "webfonts").glob("*.woff2")):
-              before = f.stat().st_size
-              tmp = pathlib.Path(str(f) + ".subset")
-              subprocess.run([sys.executable, "-m", "fontTools.subset", str(f),
+          def subset(src, chars, out):
+              tf = pathlib.Path("/tmp/uh-web-chars.txt")
+              tf.write_text("".join(sorted(chars)), encoding="utf-8")
+              subprocess.run([sys.executable, "-m", "fontTools.subset", str(src),
                   f"--text-file={tf}",
                   "--flavor=woff2",
-                  f"--output-file={tmp}",
+                  f"--output-file={out}",
                   "--layout-features=*",
                   "--no-hinting",
                   "--drop-tables+=DSIG",
               ], check=True)
+
+          # 保底用字:整站 HTML 原文 + ASCII + 中文标点(正文族与一切回退都用它)
+          text = "\n".join(
+              p.read_text(encoding="utf-8") for p in sorted(dist.rglob("*.html"))
+          )
+          site = set(text) | set(htmllib.unescape(text))
+          safe = {chr(c) for c in range(0x20, 0x7F)}
+          safe |= set("　、。，．·…—～－／｜（）〈〉《》「」『』【】“”‘’※→←↑↓")
+
+          # ---- 读网页 CSS(web_post.sh 已把内联样式抽到 /assets/underhell.css) ----
+          css_file = dist / "assets" / "underhell.css"
+          css = css_file.read_text(encoding="utf-8") if css_file.is_file() else ""
+          if not css:
+              pages = sorted(dist.rglob("*.html"))
+              css = pages[0].read_text(encoding="utf-8") if pages else ""
+          css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+          faces = {}  # 字族名 -> 字体文件名
+          for m in re.finditer(r"@font-face\s*\{([^}]*)\}", css):
+              b = m.group(1)
+              fam = re.search(r'font-family:\s*"([^"]+)"', b)
+              url = re.search(r'url\("([^"]+)"\)', b)
+              if fam and url:
+                  faces[fam.group(1)] = url.group(1).rsplit("/", 1)[-1]
+          fvars = {}  # --uh-*-font -> 首选字族名
+          for m in re.finditer(r":root\s*\{([^}]*)\}", css):
+              for v in re.finditer(r"(--uh-[a-z-]*font)\s*:\s*([^;}]+)", m.group(1)):
+                  first = re.search(r"['\"]([^'\"]+)['\"]", v.group(2))
+                  if first:
+                      fvars[v.group(1)] = first.group(1)
+          # 选择器 -> 字族。只认这三种形态,认不出的族退回全站并集。
+          rules, loose = [], set()
+          for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+              sel, body = m.group(1).strip(), m.group(2)
+              v = re.search(r"font-family:\s*var\((--uh-[a-z-]*font)", body)
+              if not v:
+                  continue
+              fam = fvars.get(v.group(1))
+              if not fam or fam not in faces:
+                  continue  # 该变量指向系统字体,本来就不出自托管包
+              for one in sel.split(","):
+                  one = one.strip()
+                  if re.fullmatch(r"[a-zA-Z][a-zA-Z0-9]*", one):
+                      rules.append(("tag", one, fam))
+                  elif re.fullmatch(r"\.[\w-]+", one):
+                      rules.append(("class", one[1:], fam))
+                  elif re.fullmatch(r'\[class\^="[^"]+"\]', one):
+                      rules.append(("prefix", re.search(r'\^="([^"]+)"', one).group(1), fam))
+                  else:
+                      print(f"  [loose] 不认识的选择器 {one!r} -> {fam},该族退回全站用字")
+                      loose.add(fam)
+          for content in re.findall(r'content:\s*"([^"]*)"', css):
+              safe |= set(htmllib.unescape(content))  # ::before/::after 生成的字符
+          site |= safe
+
+          # ---- 遍历 HTML:匹配到的元素,整棵子树的文本都记给该族(宁多勿漏) ----
+          per_fam = {f: set() for f in faces}
+          VOID = {"img", "br", "hr", "meta", "link", "input", "source", "track", "wbr",
+                  "area", "base", "col", "embed", "param"}
+          class Collect(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.stack = []
+              def handle_starttag(self, tag, attrs):
+                  cls = [x for x in dict(attrs).get("class", "").split() if x]
+                  for _, val in attrs:
+                      if val:
+                          site.update(val)  # 属性文本(如 title 提示)一并进保底集
+                  if tag not in VOID:  # 空元素 HTML 里不闭合,压栈会污染后续祖先
+                      self.stack.append((tag, cls))
+              def handle_endtag(self, tag):
+                  if self.stack:
+                      self.stack.pop()
+              def handle_data(self, data):
+                  ch = set(data)
+                  if not ch:
+                      return
+                  site.update(ch)
+                  for tag, cls in self.stack:
+                      for kind, arg, fam in rules:
+                          if (kind == "tag" and tag == arg
+                                  or kind == "class" and arg in cls
+                                  or kind == "prefix" and any(s.startswith(arg) for s in cls)):
+                              per_fam[fam].update(ch)
+          Collect().feed(text)
+
+          fam_of_file = {v: k for k, v in faces.items()}
+          files = sorted((dist / "webfonts").glob("*.woff2"))
+          print(f"字体 {len(files)} 个,能映射到字族的 {len([f for f in files if f.name in fam_of_file])} 个")
+
+          before_all = after_all = 0
+          for f in files:
+              fam = fam_of_file.get(f.name)
+              if fam is None:
+                  chars, why = site, "无字族映射"
+              elif fam in loose:
+                  chars, why = site, "选择器不认识"
+              else:
+                  chars, why = per_fam[fam], f"字族 {fam}"
+              chars = chars | safe
+              before = f.stat().st_size
+              tmp = pathlib.Path(str(f) + ".subset")
+              subset(f, chars, tmp)
+              # 复核:该要的字,只要源字体里有字形,子集里就必须在
+              want = {ord(x) for x in chars} & set(TTFont(f).getBestCmap())
+              got = set(TTFont(tmp).getBestCmap())
+              if want - got:
+                  print(f"  [retry] {f.name} 缺 {len(want - got)} 个字形,退回全站用字")
+                  subset(f, site, tmp)
+                  chars, why = site, "退回全站用字"
               tmp.replace(f)
               after = f.stat().st_size
               before_all += before
               after_all += after
-              print(f"  {f.name}:{before // 1024}KB -> {after // 1024}KB")
+              print(f"  {f.name}:{before // 1024}KB -> {after // 1024}KB({len(chars)} 字,{why})")
           print(f"字体合计:{before_all // 1024}KB -> {after_all // 1024}KB")
           PY
 
