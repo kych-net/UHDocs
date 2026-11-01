@@ -25,6 +25,10 @@ jobs:
         with:
           # .webfonts/ 的字体走 LFS,不拉取只会拿到指针文件
           lfs: true
+          # 默认 depth=1 会让 git log 把每个文件的最后提交日都退化成 HEAD 那一次,
+          # web_post.sh 生成的 JSON-LD dateModified 就全变成构建当天(线上实测踩过)。
+          # 取完整历史才能给出真实的逐页修改日期。
+          fetch-depth: 0
 
       # 模板不再走 Typst Universe(那边只有 0.3.1),直接引 kych-net/UHTemp 的 main。
       # 模板一更新,下次构建就跟上;配置.typ 里的版本号由下一步改写对齐。

@@ -43,6 +43,16 @@ site=$(sed -n 's/^#let 站点网址 *= *"\([^"]*\)".*/\1/p' "$root/配置.typ" |
 brand=$(sed -n 's/.*品牌名: *"\([^"]*\)".*/\1/p' "$root/配置.typ" | head -1)
 : > "$tmpdir/sitemap.urls"   # 已索引页的绝对 URL(sitemap 用)
 
+# 浅克隆判定:depth=1 的仓库里 git log 会把所有文件的最后提交日都算成 HEAD 那一次,
+# 逐页 dateModified 就全变成构建当天。宁可整个字段不写,也不发一个错日期。
+# / In a shallow clone git log collapses every file's date onto HEAD; suppress it then.
+if [ "$(git -C "$root" rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  shallow=1
+  echo "web_post: 浅克隆,JSON-LD 不写 dateModified"
+else
+  shallow=0
+fi
+
 # URL 百分号编码:sitemap 与 canonical 要求非 ASCII 字符编码,而站点路径是中文。
 # 有 python3 时编码,没有就原样输出(浏览器与爬虫多能容忍 IRI)。
 # / Percent-encode non-ASCII paths for sitemap/canonical; fall back to raw IRI.
@@ -288,12 +298,14 @@ while IFS= read -r file; do
              sed -E 's|.*content="(.*)">|\1|')
     pdir=${page%/}
     mod=""
-    for s in "$root/内容$pdir.typ" "$root/内容${page}index.typ"; do
-      if [ -f "$s" ] && command -v git >/dev/null 2>&1; then
-        mod=$(git -C "$root" log -1 --format=%cI -- "$s" 2>/dev/null | cut -c1-10)
-        [ -n "$mod" ] && break
-      fi
-    done
+    if [ "$shallow" != 1 ]; then
+      for s in "$root/内容$pdir.typ" "$root/内容${page}index.typ"; do
+        if [ -f "$s" ] && command -v git >/dev/null 2>&1; then
+          mod=$(git -C "$root" log -1 --format=%cI -- "$s" 2>/dev/null | cut -c1-10)
+          if [ -n "$mod" ]; then break; fi
+        fi
+      done
+    fi
     ld=$(awk -v titles="$tmpdir/titles" -v page="$page" -v canon="$canon" -v title="$title" \
              -v desc="$desc" -v author="$author" -v brand="$brand" -v site="$site" -v mod="$mod" '
       function jesc(s) {
