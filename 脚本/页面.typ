@@ -12,6 +12,14 @@
 // 目录页(如 内容/生物/index.typ → 页=生物)由 make 显式传入
 #let 源 = sys.inputs.at("源", default: "内容/" + 页 + ".typ")
 
+// SEO 元数据:取 配置.typ 的 页面描述[页];未登记的页不设 description(web_post.sh 据此标 noindex)。
+// / SEO metadata from 配置.typ; unlisted pages get no description and are marked noindex.
+#let 信息 = 页面描述.at(页, default: (:))
+#set document(
+  description: 信息.at("描述", default: none),
+  keywords: 信息.at("关键词", default: ()),
+)
+
 #show: 网页模板.with(页标题: 标题, 页脚链接: 站点链接("/" + 页 + ".pdf"))
 
 #include "../" + 源

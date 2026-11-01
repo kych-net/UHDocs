@@ -31,6 +31,24 @@ trap 'rm -rf "$tmpdir"' EXIT
 map=$tmpdir/map.tsv          # 显示名 \t 页 URL \t 锚点
 : > "$map"
 
+# 站点根与品牌名:canonical、og:url、sitemap.xml 用前者,非首页标题后缀用后者。
+# 都直接读 配置.typ,不在脚本里重复维护。
+# / Site root and brand name, read from 配置.typ.
+site=$(sed -n 's/^#let 站点网址 *= *"\([^"]*\)".*/\1/p' "$root/配置.typ" | head -1)
+brand=$(sed -n 's/.*品牌名: *"\([^"]*\)".*/\1/p' "$root/配置.typ" | head -1)
+: > "$tmpdir/sitemap.urls"   # 已索引页的绝对 URL(sitemap 用)
+
+# URL 百分号编码:sitemap 与 canonical 要求非 ASCII 字符编码,而站点路径是中文。
+# 有 python3 时编码,没有就原样输出(浏览器与爬虫多能容忍 IRI)。
+# / Percent-encode non-ASCII paths for sitemap/canonical; fall back to raw IRI.
+urlenc() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=":/"))' "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
 # 登记元素(首次出现为准;同名以先扫到的页为准)
 register() {
   name=$1
@@ -218,10 +236,90 @@ while IFS= read -r file; do
   ' "$file")
   mv "$tmpdir/out.html" "$file"
 
+  # ---------- SEO:canonical / Open Graph / robots ----------
+  # 有 description 的页才索引并写入 sitemap;未登记的页(无描述)标 noindex。
+  # 非首页的 <title> 补品牌后缀,便于在搜索结果里区分。
+  title=$(grep -oE '<title>[^<]*</title>' "$file" | head -1 | sed -E 's|<title>(.*)</title>|\1|')
+  desc=$(grep -oE '<meta name="description" content="[^"]*">' "$file" | head -1 | sed -E 's|.*content="(.*)">|\1|')
+  if [ "$page" = "/" ]; then canon="$site/"; else canon="$site$page"; fi
+  canon=$(urlenc "$canon")
+  if [ -n "$desc" ]; then
+    robots="index,follow"
+    printf '%s\n' "$canon" >> "$tmpdir/sitemap.urls"
+  else
+    robots="noindex,nofollow"
+  fi
+  if [ "$page" = "/" ]; then ogtype="website"; else ogtype="article"; fi
+  if [ "$page" = "/" ] || [ -z "$brand" ]; then newtitle=""; else newtitle="$title · $brand"; fi
+  {
+    printf '<meta name="robots" content="%s">' "$robots"
+    printf '<link rel="canonical" href="%s">' "$canon"
+    printf '<meta property="og:type" content="%s">' "$ogtype"
+    printf '<meta property="og:site_name" content="%s">' "$brand"
+    printf '<meta property="og:title" content="%s">' "$title"
+    printf '<meta property="og:url" content="%s">' "$canon"
+    printf '<meta property="og:locale" content="zh_CN">'
+    if [ -n "$desc" ]; then printf '<meta property="og:description" content="%s">' "$desc"; fi
+    printf '<meta name="twitter:card" content="summary">'
+    printf '<meta name="twitter:title" content="%s">' "$title"
+    if [ -n "$desc" ]; then printf '<meta name="twitter:description" content="%s">' "$desc"; fi
+  } > "$tmpdir/extra.html"
+  awk -v extrafile="$tmpdir/extra.html" -v newtitle="$newtitle" '
+    BEGIN {
+      extra = ""
+      while ((getline l < extrafile) > 0) extra = extra l
+      close(extrafile)
+      done = 0
+    }
+    # 只替换首个 <title>…</title> 的内容
+    function retitle(s, t,   i, e) {
+      i = index(s, "<title>")
+      if (i == 0) return s
+      e = index(s, "</title>")
+      if (e <= i) return s
+      return substr(s, 1, i + 6) t substr(s, e)
+    }
+    {
+      line = $0
+      if (newtitle != "") line = retitle(line, newtitle)
+      if (!done) {
+        i = index(line, "</head>")
+        if (i > 0) {
+          print substr(line, 1, i - 1) extra substr(line, i)
+          done = 1
+          next
+        }
+      }
+      print line
+    }
+  ' "$file" > "$tmpdir/seo.html"
+  mv "$tmpdir/seo.html" "$file"
+
   if ! grep -qF 'uhTocToggle' "$file" 2>/dev/null; then
     printf '%s\n' "$JS" >> "$file"
   fi
   total=$((total + ${n:-0}))
 done < "$tmpdir/htmls"
 
-echo "web: $(wc -l < "$tmpdir/htmls" | tr -d ' ') 页;CSS 抽取;跨页元素链接 $total 个"
+# ---------- sitemap.xml / robots.txt ----------
+# 只收录已索引页(有 description 的页),首页固定排在最前。
+if [ -s "$tmpdir/sitemap.urls" ]; then
+  {
+    printf '<?xml version="1.0" encoding="UTF-8"?>\n'
+    printf '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    first="$site/"
+    printf '  <url><loc>%s</loc></url>\n' "$first"
+    while IFS= read -r u; do
+      if [ "$u" != "$first" ]; then printf '  <url><loc>%s</loc></url>\n' "$u"; fi
+    done < "$tmpdir/sitemap.urls"
+    printf '</urlset>\n'
+  } > "$dist/sitemap.xml"
+fi
+
+{
+  printf 'User-agent: *\n'
+  printf 'Allow: /\n'
+  if [ -n "$site" ]; then printf '\nSitemap: %s/sitemap.xml\n' "$site"; fi
+} > "$dist/robots.txt"
+
+echo "web: $(wc -l < "$tmpdir/htmls" | tr -d ' ') 页;CSS 抽取;跨页元素链接 $total 个;SEO 标签与 sitemap"

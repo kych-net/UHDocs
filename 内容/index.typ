@@ -10,6 +10,14 @@
 // 数字两侧的源标点(如 50:1、小数)与多字符源(如 ...)除外,链接内文本不受影响。
 #show text: 标点替换
 
+// SEO 元数据取自 配置.typ 的 页面描述["index"];只设 description/keywords,不改正文。
+// / SEO metadata only; page content unchanged.
+#let 首页信息 = 页面描述.at("index", default: (:))
+#set document(
+  description: 首页信息.at("描述", default: none),
+  keywords: 首页信息.at("关键词", default: ()),
+)
+
 // PDF 封面图:web 模式不渲染整页封面(仅标题块),print 模式走纯白省墨封面,
 // 因此此图只出现在普通版与屏幕版的 PDF 上。
 // / Cover image: web renders no full-page cover, print uses an ink-saving white cover,

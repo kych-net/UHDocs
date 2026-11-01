@@ -36,6 +36,11 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
   需要时自己在正文(通常在 `#if is_web() [ … ]` 内)取用,或按 README 提示修改/禁用。
 - **`网页模板`** —— `地狱之下模板.with(title: …, subtitle: …, author: …, lang: "zh", paper: "a4", 品牌名: …, 备案号: "", 元素系统数据: 元素数据)`。
   封面/logo 走模板默认;要加图就把图片放进本项目,再 `cover: image("…")` / `logo: image("…")`。
+- **`站点网址` / `页面描述`** —— SEO 数据。`站点网址` 不带结尾斜杠;`页面描述` 以 `内容/` 下的页路径
+  为键(首页 `"index"`),值为 `(描述: …, 关键词: (…))`。`脚本/页面.typ` 与 `内容/index.typ` 用
+  `#set document` 输出 description/keywords;`脚本/web_post.sh` 据此生成 canonical、Open Graph、
+  `dist/sitemap.xml` 与 `dist/robots.txt`,并给非首页 `<title>` 补 `· 品牌名` 后缀。
+  **未登记的页会被标 noindex 且不进 sitemap**——新增页面要在这里补条目。
 
 ## 编译
 
