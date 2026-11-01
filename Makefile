@@ -4,7 +4,8 @@
 # 内容/ import it via ../配置.typ, so --root . is required.
 #
 # 网页是多页站点:入口 → dist/index.html,每章 → dist/<路径>/index.html,
-# 收尾由 脚本/web_post.sh 抽一份公共样式表并把跨页元素连成链接。
+# 收尾由 脚本/web_post.sh 抽一份公共样式表、把跨页元素连成链接,并把 Typst 内联成
+# base64 的图片抽成 dist/图片/ 外链(首页是全量入口,同一批图原本在多个页面各嵌一份)。
 #
 # PDF 与网页共用同一套页面集合:入口 内容/index.typ → dist/index.pdf(整本),
 # 其余各页经 脚本/页面.typ 套用模板 → dist/<路径>.pdf(目录页 内容/<目录>/index.typ

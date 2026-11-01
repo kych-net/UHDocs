@@ -19,9 +19,10 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
 | `内容/<名>.typ` | 各章正文,**自带 `#import "../配置.typ": *`**;路径即 URL 段 |
 | `内容/<目录>/index.typ` | 目录页正文 → URL `/<目录>/` |
 | `脚本/页面.typ` | 网页各独立页的统一入口,`make` 传 `--input 页=<路径> --input 源=<路径>` |
-| `脚本/web_post.sh` | 网页后处理:抽公共 CSS 到 `/assets/underhell.css`、把定义在别页的元素连成链接、注入目录/评论开合脚本 |
+| `脚本/web_post.sh` | 网页后处理:抽公共 CSS 到 `/assets/underhell.css`、把定义在别页的元素连成链接、注入目录/评论开合脚本、把内联图片改成外链 |
+| `脚本/抽取内嵌图片.sh` | 由 `web_post.sh` 调用:把 Typst 内联的 base64 图片抽到 `dist/图片/`,页面改引 `/图片/xxx`,并补 `loading="lazy"`(只用 sh/awk/base64,不依赖 Python) |
 | `附件/元素系统.csv` | 元素系统宽表(首列=元素 id,其后每列=一个系统) |
-| `图片/` | 图片素材,已配置 Git LFS |
+| `图片/` | 图片素材,已配置 Git LFS;`make web` 会把用到的图抽成产物 `dist/图片/`(对外 `/图片/xxx`) |
 | `.webfonts/` | 自托管网页字体源目录(默认隐藏),默认只有说明文件;放入 4 个 `.woff2` 后 `make web` 会拷到产物 `dist/webfonts/`(见 `.webfonts/README.md`) |
 | `Makefile` | 编译脚本 |
 | `.github/workflows/web.yml` | 推送 `main` → 构建并强推 `web` 分支 |
@@ -46,7 +47,7 @@ UHEg 是基于[地狱之下](https://typst.app/universe/package/underhell)模板
 
 ```sh
 make pdf    # 内容/ 下全部 .typ → dist/*.pdf(逐页经 脚本/页面.typ 套模板)
-make web    # 多页站点 → dist/(含 /assets/underhell.css)
+make web    # 多页站点 → dist/(含 /assets/underhell.css 与外链图片 /图片/…)
 make watch  # 监听 内容/index.typ,自动重编 dist/index.pdf
 make clean  # rm -rf dist
 ```
@@ -153,6 +154,12 @@ PDF 走同一套页面集合:入口 `内容/index.typ` 直接编译 → `dist/in
   由根目录 `.gitattributes` 配置了 Git LFS(`svg` 一行已注释掉)。
 - clone 前需装 `git lfs`,否则拿到的是指针文件;新图放进 `图片/` 即自动走 LFS。
 - 引用图片用 `image("图片/xxx.png")`(路径相对当前 `.typ` 文件解析)。
+- **HTML 导出会把图片内联成 base64**,PDF 不会。`make web` 收尾时
+  `脚本/抽取内嵌图片.sh` 把这些内联图抽成 `dist/图片/` 下的文件、页面改引 `/图片/xxx`
+  并加 `loading="lazy"`:与 `图片/` 源文件逐字相同的(SVG 就是这种)直接用源文件名并从源目录
+  复制;对不上号的(Typst 会重新编码位图)解码落盘,按内容起名 `内嵌-<长度>-<指纹>.<ext>`,
+  免得同名却不同图被源文件顶掉。首页是全量入口,同一批图原本会在首页和章页里各嵌一份,
+  外链后浏览器只下一份。
 
 ## 字体(`.webfonts/`)
 
@@ -180,10 +187,13 @@ summary structures and forced conclusions.
 
 ## 发布网页
 
-`make web` 的 `dist/` 是纯静态站点(`.webfonts/` 有字体时,产物含 `webfonts/`)。推送 `main` 后
-`.github/workflows/web.yml` 会重建、按页面用字子集化字体,并强推 `web` 分支;托管平台
-(Cloudflare Pages / EdgeOne Pages)绑定 `web` 分支并**关闭平台侧构建**即可。分平台步骤见
-根 `README.md`「部署网页」。
+`make web` 的 `dist/` 是纯静态站点(`.webfonts/` 有字体时产物含 `webfonts/`,有图片时含 `图片/`)。
+推送 `main` 后 `.github/workflows/web.yml` 会重建、把页面引用到而产物缺失的图片从 `图片/` 补进
+`dist/图片/`、按页面用字子集化字体,并强推 `web` 分支;托管平台(Cloudflare Pages / EdgeOne
+Pages)绑定 `web` 分支并**关闭平台侧构建**即可。分平台步骤见根 `README.md`「部署网页」。
+
+`/图片/*` 会被 CDN 按 URL 缓存:matplotlib 重跑覆盖同名源图时,产物字节变了但 URL 没变,
+平台侧可能要手动清缓存才见效。
 
 ## 已知坑
 

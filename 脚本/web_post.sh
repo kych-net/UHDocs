@@ -1,18 +1,21 @@
 #!/bin/sh
-# 网页后处理:抽公共样式表、连跨页元素、注入开合脚本。
+# 网页后处理:抽公共样式表、连跨页元素、注入开合脚本、内嵌图片改外链。
 #
 # 用法:sh 脚本/web_post.sh [dist]
-# make web 逐页导出 HTML 后调用。做三件模板包本身不做的多页站点级优化
+# make web 逐页导出 HTML 后调用。做四件模板包本身不做的多页站点级优化
 # (见 web.css / lib.typ 的说明):
 #   1. 样式表抽出一份 /assets/underhell.css,各页由内联 <style> 换成 <link>,多页共用;
 #   2. 定义在别页的元素,由 title="未定义" 的 span 改成指向定义页的链接;
-#   3. 注入目录/评论的开合脚本。
+#   3. 注入目录/评论的开合脚本;
+#   4. Typst 内联成 base64 的 image() 抽成 dist/图片/ 外链并补 loading="lazy"
+#      (交给 脚本/抽取内嵌图片.sh;首页是全量入口,同一批图原本在 4 个页面各嵌一份)。
 # 元素定义取自 内容/ 下的 #设定元素(level: n)[名]、显式标题标签 `= 标题 <标签>`,
 # 以及 附件/元素系统.csv 的「默认」列别名:显示名与锚点 id 不同时,链接片段用 id
 # (标题锚点是 id,页面上显示的却是「默认」列名,如 古龙→龙)。
 #
 # / Web post-processing: extract one shared /assets/underhell.css, rewrite
-# cross-page element spans into links, and inject the toggle script.
+# cross-page element spans into links, inject the toggle script, and turn
+# Typst's inlined base64 images into /图片/ files with lazy loading.
 # Element definitions come from 内容/ and the 附件/元素系统.csv default column.
 
 set -e
@@ -301,6 +304,16 @@ while IFS= read -r file; do
   total=$((total + ${n:-0}))
 done < "$tmpdir/htmls"
 
+# ---------- 内嵌图片 → /图片/ 外链 + loading="lazy" ----------
+# Typst 的 HTML 导出把 image() 整个 base64 塞进页面,首页(全量入口)与章页各嵌一份。
+# 抽成 dist/图片/ 下的文件后图片才谈得上 CDN 缓存、跨页复用和懒加载。
+# 失败不阻断构建:页面保持内联也能正常显示,只是没吃到这些好处。
+if sh "$script_dir/抽取内嵌图片.sh" "$dist" "$root/图片"; then
+  :
+else
+  echo "web_post: 图片外链步骤失败,页面保持内联"
+fi
+
 # ---------- sitemap.xml / robots.txt ----------
 # 只收录已索引页(有 description 的页),首页固定排在最前。
 if [ -s "$tmpdir/sitemap.urls" ]; then
@@ -322,4 +335,4 @@ fi
   if [ -n "$site" ]; then printf '\nSitemap: %s/sitemap.xml\n' "$site"; fi
 } > "$dist/robots.txt"
 
-echo "web: $(wc -l < "$tmpdir/htmls" | tr -d ' ') 页;CSS 抽取;跨页元素链接 $total 个;SEO 标签与 sitemap"
+echo "web: $(wc -l < "$tmpdir/htmls" | tr -d ' ') 页;CSS 抽取;跨页元素链接 $total 个;图片外链;SEO 标签与 sitemap"

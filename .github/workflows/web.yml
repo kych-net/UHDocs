@@ -83,6 +83,30 @@ jobs:
           TYPST_FONT_PATHS: ${{ runner.temp }}/uhfonts
         run: make all
 
+      # Typst 的 HTML 导出把 image() 内联成 base64,make web 收尾时 脚本/抽取内嵌图片.sh 已把
+      # 这些图抽到 dist/图片/ 并把页面改成 /图片/… 外链。这一步兜住它够不着的情况:页面引用了
+      # /图片/xxx 而产物目录下没有(比如手写 HTML 直接引源图),就从 LFS 拉下来的 图片/ 补过去。
+      # 只复制被引用的文件,没被引用的源图不进 web 分支。
+      - name: 复制外链图片到 dist
+        run: |
+          mkdir -p dist/图片
+          grep -rho 'src="/图片/[^"]*"' dist --include='*.html' 2>/dev/null |
+            sed 's|^src="/图片/||; s|"$||' | sort -u > /tmp/imgrefs.txt
+          copied=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            if [ -f "dist/图片/$f" ]; then continue; fi
+            if [ -f "图片/$f" ]; then
+              cp "图片/$f" "dist/图片/$f"
+              echo "  补复制 $f"
+              copied=$((copied + 1))
+            else
+              echo "::warning::页面引用 /图片/$f,但 图片/$f 不存在"
+            fi
+          done < /tmp/imgrefs.txt
+          echo "外链图片引用 $(wc -l < /tmp/imgrefs.txt | tr -d ' ') 个,源目录补复制 $copied 个"
+          ls -l dist/图片/
+
       # 源 .webfonts/ 有字体时,从产物 HTML 提取实际用字,把全字库 woff2 原地子集化
       # (同名覆盖,@font-face 无需改动);没有字体则跳过,不影响构建。
       - name: 字体子集化(仅 .webfonts/ 有字体时)
