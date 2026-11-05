@@ -355,7 +355,7 @@ while IFS= read -r file; do
           m = split(page, seg, "/")
           for (i = 2; i < m; i++) {
             if (seg[i] == "") continue
-            acc = acc "/" seg[i] "/"
+            acc = acc == "" ? "/" seg[i] "/" : acc seg[i] "/"
             nm = ((acc in TN) && TN[acc] != "") ? TN[acc] : seg[i]
             uu = ((acc in TU) && TU[acc] != "") ? TU[acc] : site acc
             pos = pos + 1
