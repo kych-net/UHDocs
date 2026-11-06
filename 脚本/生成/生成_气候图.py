@@ -39,6 +39,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # 质量加权定压比热 c_p≈2150 J/(kg·K) → 对流层干绝热递减率 Γ_干=g/c_p
 # 环境递减率取干绝热的一部分(水汽凝结释放潜热,环境率低于干绝热;此星水汽仅 1%,取 3/4)
 重力, c_p = 20.0, 2150.8
+行星半径_km = 15000.0
 κ_凝结 = 0.75
 Γ_env = κ_凝结 * 重力 / c_p        # ≈6.98 K/km
 
@@ -233,11 +234,11 @@ def 场():
     温度 = np.where(陆掩, 陆温, 海温)
 
     # 降水:纬向雨带 × 海洋性 × 地形抬升/雨影
-    dy = np.radians(180.0 / (NY - 1)) * 6371.0                  # km/格(纬向)
-    dx = np.radians(360.0 / NX) * 6371.0                        # km/格(经向,赤道)
+    dy = np.radians(180.0 / (NY - 1)) * 行星半径_km             # km/格(纬向)
+    dx = np.radians(360.0 / NX) * 行星半径_km                   # km/格(经向,赤道)
     距海 = distance_transform_edt(陆掩, sampling=(dy, dx * 0.7))  # 陆地到海的距离 km
     海洋性 = np.where(陆掩, 1.0 / (1.0 + 距海 / 1300.0), 1.0)
-    坡向 = np.gradient(高程, axis=1) / (c * np.radians(360.0 / NX) * 6371.0)
+    坡向 = np.gradient(高程, axis=1) / (c * np.radians(360.0 / NX) * 行星半径_km)
     抬升 = 纬向风(LAT) * 坡向
     抬升 = 抬升 / (np.std(抬升[陆掩]) + 1e-9)
     地形因子 = np.where(陆掩, np.clip(1.0 + 0.6 * 抬升, 0.2, 3.0), 1.0)
@@ -260,7 +261,7 @@ def 场():
     高日 = np.where(LAT[None] >= 0.0, (月 >= 3) & (月 <= 8), (月 < 3) | (月 > 8))
     φ_ITCZ = 15.0 * np.cos(2.0 * np.pi * (月 - 6.0) / 12.0)
     月雨基 = 纬向雨(LAT[None] - φ_ITCZ)
-    月雨 = np.clip(月雨基 * (降水 / 月雨基.mean(0))[None], 0.0, None)
+    月雨 = np.clip(月雨基 * (降水 / 月雨基.sum(0))[None], 0.0, None)
     大 = 1e9
     夏月最大 = np.where(高日, 月雨, -大).max(0)
     夏月最小 = np.where(高日, 月雨, 大).min(0)
@@ -281,7 +282,7 @@ def 场():
 
     # B 干旱:年降水 < 干旱阈值(夏雨集中抬高阈值、冬雨集中压低)
     夏占比 = 夏雨 / np.maximum(P年, 1e-6)
-    P阈 = 20.0 * tC + np.where(夏占比 >= 0.7, 280.0, np.where(夏占比 <= 0.3, 140.0, 0.0))
+    P阈 = 20.0 * tC + np.where(夏占比 >= 0.7, 280.0, np.where(夏占比 <= 0.3, 0.0, 140.0))
     干 = 未定 & (P年 < P阈)
     沙漠 = P年 < 0.5 * P阈
     气候[干 & 沙漠 & (tC >= 18.0)] = 码["BWh"]
