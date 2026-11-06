@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://uh.kych.net/sitemap.xml
